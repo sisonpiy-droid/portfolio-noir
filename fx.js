@@ -76,7 +76,7 @@ function swarm() {
   const visible = (el) => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
   const doc = (el) => { const r = el.getBoundingClientRect(); return { top: r.top + scrollY, left: r.left }; };
   const depth = (el) => { let d = 0; for (let e = el; e; e = e.parentElement) d++; return d; };
-  const add = (type, el, extra = {}) => { const p = doc(el); const L = { type, el, top: p.top, left: p.left, h: el.getBoundingClientRect().height, lh: parseFloat(getComputedStyle(el).lineHeight) || 20, fixed: !!el.closest('.dock-container'), depth: depth(el), done: false, by: null, ...extra }; layers.push(L); return L; };
+  const add = (type, el, extra = {}) => { const p = doc(el); const L = { type, el, top: p.top, left: p.left, h: el.getBoundingClientRect().height, w: el.getBoundingClientRect().width, lh: parseFloat(getComputedStyle(el).lineHeight) || 20, fixed: !!el.closest('.dock-container'), depth: depth(el), done: false, by: null, ...extra }; layers.push(L); return L; };
 
   for (const el of all) {
     if (el === gridEl || gridEl?.contains(el) || el.closest('#toast') || !visible(el)) continue;
@@ -107,6 +107,10 @@ function swarm() {
   }
   layers.sort((a, b) => a.top - b.top || a.depth - b.depth || (a.type === 'rect' ? -1 : 1) - (b.type === 'rect' ? -1 : 1) || a.left - b.left);
   const total = layers.length;
+  for (const L of layers) {
+    const tl = L.nodes ? L.nodes.reduce((n, x) => n + x.data.trim().length, 0) : 0;
+    L.small = L.type === 'text' ? tl < 30 : L.type === 'rect' ? tl < 30 && (L.w * L.h < 30000 || L.h <= 3) : false;
+  }
 
   // small svg icons (button arrows, link icons) show once their owner is built
   const icons = $$('svg', roots[1]).filter((s) => !s.closest('.hero-wordmark-svg')).concat($$('svg', roots[0]));
@@ -145,7 +149,7 @@ function swarm() {
 
   // ---------- 3. overlay, HUD, agents ----------
   const root = document.createElement('div'); root.className = 'sw-root';
-  const N = 5;
+  const N = 3;
   root.innerHTML = `<div class="sw-shield"></div><div class="sw-ruler sw-rt"></div><div class="sw-ruler sw-rl"></div><div class="sw-intro">PS</div>
     <div class="sw-hud"><span class="sw-dots">${COLORS.slice(0, 4).map((c) => `<i style="background:${c}"></i>`).join('')}</span>
     <span class="sw-status"><span id="sw-ag"><b>${N}</b> agents</span><span id="sw-ly"><b>0</b> / ${total} layers</span><span class="sw-bar"><i></i></span></span>
@@ -159,7 +163,7 @@ function swarm() {
     const color = COLORS[i], el = document.createElement('div'); el.className = 'sw-cur'; el.style.opacity = 0; el.innerHTML = ARROW(color);
     root.append(el);
     const left = i % 2 === 0;
-    return { el, color, shape: 'arrow', x: left ? -40 : innerWidth + 40, y: rand(120, innerHeight - 120), st: 'idle', wake: .3 + i * .22, speed: rand(480, 1000), L: null, t0: 0, dur: 0, fx: 0, fy: 0, bend: 0, wx: innerWidth / 2, wy: innerHeight / 2, wt: 0, ph: null, sel: null, hl: null, typed: 0, edit: false, nextEdit: 0 };
+    return { el, color, shape: 'arrow', x: left ? -40 : innerWidth + 40, y: rand(120, innerHeight - 120), st: 'idle', wake: .2 + i * .25, speed: rand(700, 1400), L: null, t0: 0, dur: 0, fx: 0, fy: 0, bend: 0, wx: innerWidth / 2, wy: innerHeight / 2, wt: 0, ph: null, sel: null, hl: null, typed: 0, edit: false, nextEdit: 0 };
   });
 
   let T = 0, last = performance.now(), done = 0, tour = true, speed = 2, over = false, finishing = false;
@@ -193,7 +197,7 @@ function swarm() {
       if (!eligible(L)) continue;
       const t = topNow(L);
       if (t + L.h < -60) { instant(L); continue; }
-      if (t < innerHeight - 8) return L;
+      if (t < innerHeight - 8 && !L.small) return L;
     }
     return null;
   };
@@ -238,7 +242,7 @@ function swarm() {
   const beginFly = (a, L) => {
     L.by = a; a.L = L; a.st = 'fly'; a.t0 = T; a.fx = a.x; a.fy = a.y; setShape(a, 'arrow');
     const r = rectNow(L), d = Math.hypot(r.left - a.x, r.top - a.y);
-    a.dur = clamp(d / a.speed, .25, .85); a.bend = (Math.random() < .5 ? -1 : 1) * rand(.04, .13) * Math.min(d, 600);
+    a.dur = clamp(d / a.speed, .2, .6); a.bend = (Math.random() < .5 ? -1 : 1) * rand(.04, .13) * Math.min(d, 600);
   };
   const ambientPick = () => {   // something already built that a cursor can edit again
     const c = layers.filter((l) => l.done && !l.by && !l.fixed && (l.type === 'img' || (l.nodes && l.el.textContent.length < 140)) && (() => { const r = rectNow(l); return r.width > 0 && r.top > 30 && r.bottom < innerHeight - 30; })());
@@ -254,19 +258,26 @@ function swarm() {
   const frame = (now) => {
     if (over) return;
     const dt = Math.min(.2, (now - last) / 1000) * speed; last = now; T += dt;
-    if (T > 2.4) intro.classList.add('gone');
+    if (T > 1.6) intro.classList.add('gone');
 
+    if (T > 1.6) {
+      for (const L of layers) {
+        if (!L.small || !eligible(L) || !reach(L)) continue;
+        if (!L.rt) L.rt = T + rand(.05, .6);
+        if (T < L.rt) continue;
+        instant(L); L.el.classList.add('sw-in'); setTimeout(() => L.el.classList.remove('sw-in'), 450);
+      }
+    }
     for (const a of ag) {
       if (T < a.wake) continue;
       a.el.style.opacity = 1;
       const L = a.L;
       if (a.st === 'idle') {
-        const nxt = T > 2.4 && !finishing ? pick() : null;
+        const nxt = T > 1.6 && !finishing ? pick() : null;
         if (nxt) beginFly(a, nxt);
         else {                                                    // drift around, like saai's scanning phase
           if (T > a.wt) { a.wx = innerWidth * rand(.08, .92); a.wy = innerHeight * rand(.15, .85); a.wt = T + rand(1.2, 2.6); }
           const k = Math.min(1, dt * 1.6); a.x += (a.wx - a.x) * k; a.y += (a.wy - a.y) * k;
-          if (finishing && ag.indexOf(a) < 2 && T > a.nextEdit) { a.nextEdit = T + rand(6, 12); const e = ambientPick(); if (e) { a.edit = true; beginFly(a, e); } }
         }
       } else if (a.st === 'fly') {
         const r = rectNow(L), p = clamp((T - a.t0) / a.dur, 0, 1), e = ease(p);
@@ -280,8 +291,8 @@ function swarm() {
             else { a.st = 'esel'; a.sel = makeSel(true); a.hl = document.createElement('div'); a.hl.className = 'sw-hl'; root.insertBefore(a.hl, ag[0].el); }
           } else {
           setShape(a, 'cross');
-          if (L.type === 'text') { a.st = 'frame'; a.dur = clamp(r.width / (a.speed * .9), .3, .6); a.sel = makeSel(false); }
-          else { a.st = 'drag'; a.dur = clamp(Math.hypot(r.width, r.height) / (a.speed * .8), .35, 1.1); a.ph = makePh(L, a); a.sel = makeSel(false); }
+          if (L.type === 'text') { a.st = 'frame'; a.dur = clamp(r.width / (a.speed * .9), .2, .45); a.sel = makeSel(false); }
+          else { a.st = 'drag'; a.dur = clamp(Math.hypot(r.width, r.height) / (a.speed * .8), .25, .8); a.ph = makePh(L, a); a.sel = makeSel(false); }
           }
         }
       } else if (a.st === 'drag' || a.st === 'frame') {
@@ -295,8 +306,8 @@ function swarm() {
           if (a.st === 'frame') {
             const fr = rectNow(L); place(a.sel, fr, fr.width, fr.height); a.sel.classList.add('thin'); setShape(a, 'arrow');
             L.el.classList.remove('sw-t'); a.st = 'type'; a.t0 = T; a.typed = 0;
-            a.cps = clamp(L.len / 2.6, 38, 90) * rand(.9, 1.1);    // chars per second, a long paragraph never takes more than ~3s
-          } else { setShape(a, 'arrow'); a.st = 'hold'; a.t0 = T; a.dur = rand(.12, .2); }
+            a.cps = clamp(L.len / 1.3, 60, 220) * rand(.9, 1.1);    // chars per second, a long paragraph never takes more than ~3s
+          } else { setShape(a, 'arrow'); a.st = 'hold'; a.t0 = T; a.dur = rand(.08, .14); }
         }
       } else if (a.st === 'hold') {
         const r = rectNow(L); place(a.sel, r, r.width, r.height); if (a.ph) place(a.ph, r, r.width, r.height);
@@ -304,7 +315,7 @@ function swarm() {
           if (L.type === 'rect') styleRect(L); else revealImg(L);
           a.ph.classList.add('fade'); const ph = a.ph; setTimeout(() => ph.remove(), 400); a.ph = null;
           a.sel.remove(); a.sel = null; a.t0 = T;
-          if (L.units) { a.st = 'type'; a.typed = 0; a.cps = clamp(L.len / 2.6, 38, 90) * rand(.9, 1.1); L.el.classList.remove('sw-t'); }
+          if (L.units) { a.st = 'type'; a.typed = 0; a.cps = clamp(L.len / 1.3, 60, 220) * rand(.9, 1.1); L.el.classList.remove('sw-t'); }
           else { a.st = 'settle'; a.dur = L.type === 'img' ? .6 : .3; }
         }
       } else if (a.st === 'type') {
@@ -320,7 +331,7 @@ function swarm() {
         a.x = clamp(r.left + r.width * ease(p), 24, innerWidth - 16); a.y = clamp(r.bottom, 24, innerHeight - 70);
         if (p >= 1) {
           a.sel.remove(); a.sel = null; a.hl.remove(); a.hl = null;
-          hideText(L); L.el.classList.remove('sw-t'); a.st = 'type'; a.t0 = T; a.typed = 0; a.cps = clamp(L.len / 2.6, 38, 90) * rand(.9, 1.1);
+          hideText(L); L.el.classList.remove('sw-t'); a.st = 'type'; a.t0 = T; a.typed = 0; a.cps = clamp(L.len / 1.3, 60, 220) * rand(.9, 1.1);
         }
       } else if (a.st === 'eimg') {   // swap an image: it blurs back in
         const r = rectNow(L); a.x = r.left + r.width / 2; a.y = r.top + r.height / 2;
@@ -335,7 +346,7 @@ function swarm() {
     }
 
     // tour: scroll on once everything in view is claimed, but never past the top of a block that is still being built
-    if (tour && T > 2.4) {
+    if (tour && T > 1.6) {
       const inReach = layers.some((l) => eligible(l) && reach(l));
       if (!inReach) {
         let limit = Infinity;
