@@ -302,12 +302,17 @@ function swarm() {
       a.el.style.transform = `translate(${a.x}px,${a.y}px)`;
     }
 
-    // tour: when everything in view is claimed, scroll on to the next block
+    // tour: scroll on once everything in view is claimed, but never past the top of a block that is still being built
     if (tour && T > 2.4) {
       const inReach = layers.some((l) => eligible(l) && reach(l));
       if (!inReach) {
-        const nxt = layers.find((l) => !l.done && !l.by && (!l.dep || l.dep.done));
-        if (nxt) { const gap = nxt.top - innerHeight * .45 - scrollY; if (gap > 0) scrollTo(0, scrollY + clamp(gap * 2, 90, 420) * dt); }
+        let limit = Infinity;
+        for (const l of layers) if (!l.done && !l.fixed && l.top < scrollY + innerHeight - 8) limit = Math.min(limit, l.top - 90);
+        const nxt = layers.find((l) => !l.done && !l.by);
+        if (nxt) {
+          const gap = Math.min(nxt.top - innerHeight * .45, limit) - scrollY;
+          if (gap > 0) scrollTo(0, scrollY + clamp(gap * 2, 90, 420) * dt);
+        }
       }
     }
     const pct = done / total;
