@@ -635,6 +635,43 @@ function countUp(el) {
   };
   el.textContent = m[1] + '0' + m[3]; requestAnimationFrame(step);
 }
+// ---- scroll animations with GSAP + ScrollTrigger ----
+function gsapScroll() {
+  const { gsap, ScrollTrigger } = window;
+  gsap.registerPlugin(ScrollTrigger);
+  const below = (el) => el.getBoundingClientRect().top + scrollY > innerHeight * .9;
+
+  // 1. sections, cards and headers rise in as they arrive; neighbours in the same row come in together, staggered
+  const items = $$('.section-header,.section-divider-bar,.glass-card,.hud-card').filter(below);
+  gsap.set(items, { opacity: 0, y: 60 });
+  ScrollTrigger.batch(items, {
+    start: 'top 90%', once: true,
+    onEnter: (batch) => {
+      gsap.to(batch, { opacity: 1, y: 0, duration: .9, ease: 'power3.out', stagger: .12, clearProps: 'transform,opacity' });
+      batch.forEach((el) => $$('.metric-num', el).forEach(countUp));
+    },
+  });
+
+  // 2. divider lines draw themselves
+  $$('.divider-line').forEach((l) => gsap.from(l, { scaleX: 0, transformOrigin: 'left center', duration: 1.2, ease: 'power3.out', scrollTrigger: { trigger: l, start: 'top 92%', once: true } }));
+
+  // 3. the hero drifts apart as you scroll: the wordmark falls behind and fades, the two columns move at different speeds
+  const hero = { trigger: '#hero', start: 'top top', end: 'bottom top', scrub: true };
+  gsap.to('.hero-wordmark-svg svg', { yPercent: 28, scale: 1.06, opacity: .3, ease: 'none', scrollTrigger: hero });
+  gsap.to('.left-flank', { y: -50, ease: 'none', scrollTrigger: hero });
+  gsap.to('.right-flank', { y: -110, ease: 'none', scrollTrigger: hero });
+
+  // 4. the tech-stack strip leans with your scroll speed
+  const mq = $('.marquee');
+  if (mq) {
+    const skew = gsap.quickTo(mq, 'skewX', { duration: .4, ease: 'power3' });
+    ScrollTrigger.create({ onUpdate: (self) => skew(clamp(-self.getVelocity() / 350, -10, 10)) });
+    ScrollTrigger.addEventListener('scrollEnd', () => skew(0));
+  }
+
+  document.fonts.ready.then(() => ScrollTrigger.refresh());
+}
+
 function liveFx() {
   if (liveStarted || reduced) return; liveStarted = true;
   const hero = $('#hero'), bar = document.createElement('div'); bar.id = 'progress'; document.body.append(bar);
@@ -657,6 +694,7 @@ function liveFx() {
       if (b) { const r = b.getBoundingClientRect(); b.classList.add('mag'); b.style.transform = `translate(${((e.clientX - r.left - r.width / 2) * .18).toFixed(1)}px,${((e.clientY - r.top - r.height / 2) * .3).toFixed(1)}px)`; }
     }, { passive: true });
   }
+  if (window.gsap && window.ScrollTrigger) { gsapScroll(); return; }   // GSAP ScrollTrigger drives the scroll animations; the observer below is the fallback if the CDN is blocked
   if (!('IntersectionObserver' in window)) return;
   const items = $$('.section-header,.section-divider-bar,.glass-card,.hud-card').filter((el) => el.getBoundingClientRect().top + scrollY > innerHeight * .9);
   const io = new IntersectionObserver((es) => es.forEach((e) => {
