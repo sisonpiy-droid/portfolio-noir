@@ -107,7 +107,7 @@ function swarm() {
   }
   layers.sort((a, b) => a.top - b.top || a.depth - b.depth || (a.type === 'rect' ? -1 : 1) - (b.type === 'rect' ? -1 : 1) || a.left - b.left);
   // Only the subjects are built while the swarm runs: boxes, titles and one line on what each thing is. The rest waits for the end.
-  const DEFER = '.marquee,.hero-actions,.hero-stats-row,.hud-tech-tags,.flagship-meta,.flagship-metrics-row,.flagship-links,.saai-architecture-explorer,.spec-list,.subgrid-footer,.bento-footer,.bento-controls,.bento-link,.exp-sub,.exp-note,.edu-line,.about-text + .about-text,.quote-box,.principle-desc,.email-action-box,.social-links-row,.footer-meta,.about-grid .tech-tags-group';
+  const DEFER = '.marquee,.band,.hero-actions,.hero-stats-row,.hud-tech-tags,.flagship-meta,.flagship-metrics-row,.flagship-links,.saai-architecture-explorer,.spec-list,.subgrid-footer,.bento-footer,.bento-controls,.bento-link,.exp-sub,.exp-note,.edu-line,.about-text + .about-text,.quote-box,.principle-desc,.email-action-box,.social-links-row,.footer-meta,.about-grid .tech-tags-group';
   const deferred = [];
   for (let i = layers.length - 1; i >= 0; i--) if (layers[i].el.closest(DEFER)) deferred.push(layers.splice(i, 1)[0]);
   const total = layers.length;
@@ -641,15 +641,27 @@ function gsapScroll() {
   gsap.registerPlugin(ScrollTrigger);
   const below = (el) => el.getBoundingClientRect().top + scrollY > innerHeight * .9;
 
-  // 1. sections, cards and headers rise in as they arrive; neighbours in the same row come in together, staggered
-  const items = $$('.section-header,.section-divider-bar,.glass-card,.hud-card').filter(below);
-  gsap.set(items, { opacity: 0, y: 60 });
-  ScrollTrigger.batch(items, {
-    start: 'top 90%', once: true,
-    onEnter: (batch) => {
-      gsap.to(batch, { opacity: 1, y: 0, duration: .9, ease: 'power3.out', stagger: .12, clearProps: 'transform,opacity' });
-      batch.forEach((el) => $$('.metric-num', el).forEach(countUp));
-    },
+  // 1. headers and hero cards rise in; the big cards tilt up out of the floor in 3D, tied to your scroll
+  const small = $$('.section-header,.section-divider-bar,.hud-card').filter(below);
+  gsap.set(small, { opacity: 0, y: 60 });
+  ScrollTrigger.batch(small, { start: 'top 90%', once: true, onEnter: (b) => gsap.to(b, { opacity: 1, y: 0, duration: .9, ease: 'power3.out', stagger: .12, clearProps: 'transform,opacity' }) });
+  const cards = $$('.glass-card');
+  cards.filter(below).forEach((card) => {
+    gsap.fromTo(card, { opacity: 0, y: 90, rotationX: 38, scale: .9, transformPerspective: 900, transformOrigin: '50% 100%' },
+      { opacity: 1, y: 0, rotationX: 0, scale: 1, ease: 'power2.out', scrollTrigger: { trigger: card, start: 'top 98%', end: 'top 58%', scrub: .7 } });
+  });
+  cards.forEach((card) => { if ($('.metric-num', card)) ScrollTrigger.create({ trigger: card, start: 'top 85%', once: true, onEnter: () => $$('.metric-num', card).forEach(countUp) }); });
+
+  // 1b. titles flip in letter by letter
+  $$('.section-title,.contact-title').forEach((t) => {
+    const text = t.textContent; t.setAttribute('aria-label', text); t.textContent = '';
+    const chars = [];
+    text.split(' ').forEach((word, wi, arr) => {
+      const w = document.createElement('span'); w.className = 'wd'; w.setAttribute('aria-hidden', 'true');
+      [...word].forEach((ch) => { const c = document.createElement('span'); c.className = 'ch'; c.textContent = ch; w.append(c); chars.push(c); });
+      t.append(w); if (wi < arr.length - 1) t.append(document.createTextNode(' '));
+    });
+    gsap.from(chars, { yPercent: 120, rotateX: -80, opacity: 0, transformOrigin: '0% 100%', duration: .9, ease: 'back.out(1.6)', stagger: .025, scrollTrigger: { trigger: t, start: 'top 90%', once: true } });
   });
 
   // 2. divider lines draw themselves
@@ -668,6 +680,17 @@ function gsapScroll() {
     ScrollTrigger.create({ onUpdate: (self) => skew(clamp(-self.getVelocity() / 350, -10, 10)) });
     ScrollTrigger.addEventListener('scrollEnd', () => skew(0));
   }
+
+  // 5. giant outlined text bands slide sideways as you pass them (one each way)
+  $$('.band').forEach((band, i) => {
+    const row = $('.band-row', band);
+    gsap.fromTo(row, { xPercent: i % 2 ? -34 : 0 }, { xPercent: i % 2 ? 0 : -34, ease: 'none', scrollTrigger: { trigger: band, start: 'top bottom', end: 'bottom top', scrub: true } });
+  });
+
+  // 6. the cards lean with your scroll speed
+  const lean = cards.map((c) => gsap.quickTo(c, 'skewY', { duration: .5, ease: 'power3' }));
+  ScrollTrigger.create({ onUpdate: (self) => { const v = clamp(self.getVelocity() / -450, -5, 5); lean.forEach((l) => l(v)); } });
+  ScrollTrigger.addEventListener('scrollEnd', () => lean.forEach((l) => l(0)));
 
   document.fonts.ready.then(() => ScrollTrigger.refresh());
 }

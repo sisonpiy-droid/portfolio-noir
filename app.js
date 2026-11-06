@@ -78,6 +78,8 @@ $('#app').innerHTML = `
   </div></div>
 </section>
 
+<div class="band" aria-hidden="true"><div class="band-row out">NO DEMOS · NO FLUFF · REAL PRODUCTS · NO DEMOS · NO FLUFF · REAL PRODUCTS · NO DEMOS · NO FLUFF · REAL PRODUCTS · NO DEMOS · NO FLUFF · REAL PRODUCTS · NO DEMOS · NO FLUFF · REAL PRODUCTS · NO DEMOS · NO FLUFF · REAL PRODUCTS · </div></div>
+
 <section id="flagships" class="section">
   <div class="section-header"><div class="section-tag">ARCHITECTURAL SHOWCASE</div><h2 class="section-title">Flagship Deployments</h2>
     <p class="section-desc">Products built end to end, with the tests, the data safety and the deploy behind them.</p></div>
@@ -114,6 +116,8 @@ $('#app').innerHTML = `
       <div class="bento-footer"><div class="bento-tags">${tag(m.tags, 'tag')}</div></div>
     </div>`).join('')}</div>
 </section>
+
+<div class="band" aria-hidden="true"><div class="band-row fill">BUILD · TEST · SHIP · REPEAT · BUILD · TEST · SHIP · REPEAT · BUILD · TEST · SHIP · REPEAT · BUILD · TEST · SHIP · REPEAT · BUILD · TEST · SHIP · REPEAT · BUILD · TEST · SHIP · REPEAT · </div></div>
 
 <section id="contact" class="section">
   <div class="glass-card contact-card"><div class="contact-glow-red"></div>

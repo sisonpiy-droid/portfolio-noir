@@ -344,3 +344,12 @@ body:not(.sw-run) .hero-cutout-wrap{animation:photoFloat 6s ease-in-out infinite
 body:not(.sw-run) .hero-portrait-panel::after{animation:panelRing 3.2s ease-in-out infinite}
 @keyframes panelRing{0%,100%{border-color:rgba(255,255,255,.35);box-shadow:none}50%{border-color:rgba(255,255,255,.9);box-shadow:0 0 22px rgba(239,68,68,.55)}}
 body:not(.sw-run) .hero-cutout-wrap:hover .hero-cutout-img{animation:imgGlitch .7s steps(2) 2,imgBreathe 6s ease-in-out infinite}
+
+/* ---- GSAP scroll effects ---- */
+.section-title,.contact-title{perspective:700px}
+.wd{display:inline-block;white-space:nowrap}
+.ch{display:inline-block;will-change:transform}
+.band{overflow:hidden;padding:26px 0;margin:10px 0;border-block:1px solid var(--border-subtle);position:relative;z-index:1}
+.band-row{width:max-content;white-space:nowrap;font:400 clamp(70px,12vw,170px)/1 'Bebas Neue',Impact,sans-serif;will-change:transform}
+.band-row.out{color:transparent;-webkit-text-stroke:1.5px rgba(239,68,68,.6)}
+.band-row.fill{color:rgba(255,255,255,.07)}
