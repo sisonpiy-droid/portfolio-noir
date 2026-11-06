@@ -415,7 +415,7 @@ function intro() {
     const oElastic = (p) => (p <= 0 ? 0 : p >= 1 ? 1 : Math.pow(2, -10 * p) * Math.sin((p * 10 - .75) * (2 * Math.PI) / 3) + 1);
     const inCubic = (p) => p * p * p;
     const hash = (n) => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };   // deterministic noise, so any frame can be drawn on its own
-    const END = 5.2, SKIP_TO = 4.5, SLOW = 1.45;   // SLOW stretches the timeline: about 7.5 seconds of real time
+    const END = 5.2, SKIP_TO = 4.5, SLOW = 1.2;   // SLOW stretches the timeline: about 6 seconds of real time
 
     const font = (size, family = 'Bebas Neue', weight = 400) => { ctx.font = `${weight} ${size}px "${family}", Impact, sans-serif`; };
     const text = (s, x, y, size, color, o = {}) => {
@@ -564,7 +564,7 @@ function intro() {
       }
       if (!grid) { grid = document.createElement('canvas'); grid.width = 4; grid.height = 4; const g = grid.getContext('2d'); g.fillStyle = 'rgba(0,0,0,.09)'; g.fillRect(0, 0, 4, 1); }
       if (t < 4.5) { ctx.fillStyle = ctx.createPattern(grid, 'repeat'); ctx.fillRect(0, 0, W, H); }   // faint scanlines
-      if (t < 4.45) { ctx.fillStyle = RED; ctx.fillRect(0, H - 3, W * (t / END), 3); text(`00:0${Math.min(7, Math.floor(t * SLOW))} / 00:07`, 18, H - 14, 12 * u, GREY, { family: 'JetBrains Mono', weight: 500 }); }
+      if (t < 4.45) { ctx.fillStyle = RED; ctx.fillRect(0, H - 3, W * (t / END), 3); text(`00:0${Math.min(6, Math.floor(t * SLOW))} / 00:06`, 18, H - 14, 12 * u, GREY, { family: 'JetBrains Mono', weight: 500 }); }
     };
 
     let t0 = performance.now(), off = 0, raf, finished = false;
