@@ -148,7 +148,7 @@ function swarm() {
   root.innerHTML = `<div class="sw-shield"></div><div class="sw-ruler sw-rt"></div><div class="sw-ruler sw-rl"></div><div class="sw-intro">PS</div>
     <div class="sw-hud"><span class="sw-dots">${COLORS.slice(0, 4).map((c) => `<i style="background:${c}"></i>`).join('')}</span>
     <span class="sw-status"><span id="sw-ag"><b>${N}</b> agents</span><span id="sw-ly"><b>0</b> / ${total} layers</span><span class="sw-bar"><i></i></span></span>
-    <button data-a="tour" class="on">Touring</button><button data-a="speed">2×</button><button data-a="live" class="pri" hidden>Go live</button><button data-a="x" class="x" title="Exit (Esc)">✕</button></div>`;
+    <button data-a="tour" class="on">Touring</button><button data-a="speed">4×</button><button data-a="live" class="pri" hidden>Go live</button><button data-a="x" class="x" title="Exit (Esc)">✕</button></div>`;
   document.body.append(root);
   const hud = $('.sw-hud', root), lyEl = $('#sw-ly', root), fill = $('.sw-bar i', root), intro = $('.sw-intro', root);
   const btn = (a) => $(`[data-a="${a}"]`, root);
@@ -161,7 +161,7 @@ function swarm() {
     return { el, color, shape: 'arrow', x: left ? -40 : innerWidth + 40, y: rand(120, innerHeight - 120), st: 'idle', wake: .3 + i * .22, speed: rand(480, 1000), L: null, t0: 0, dur: 0, fx: 0, fy: 0, bend: 0, wx: innerWidth / 2, wy: innerHeight / 2, wt: 0, ph: null, sel: null, typed: 0 };
   });
 
-  let T = 0, last = performance.now(), done = 0, tour = true, speed = 2, over = false, finishing = false;
+  let T = 0, last = performance.now(), done = 0, tour = true, speed = 4, over = false, finishing = false;
   let autoY = 0, lastUser = -99, manualOff = false;   // autoY: where our own scrolling left the page; a different position means the visitor scrolled
   const setShape = (a, s) => { if (a.shape !== s) { a.shape = s; a.el.innerHTML = s === 'cross' ? CROSS(a.color) : ARROW(a.color); } };
   const rectNow = (L) => L.el.getBoundingClientRect();
@@ -221,6 +221,7 @@ function swarm() {
     root.classList.add('off');
     if (tour && !instantly) scrollTo({ top: 0, behavior: 'smooth' });
     setTimeout(() => root.remove(), 750);
+    liveFx();
   };
   const cancelTour = () => { lastUser = T; if (tour) { tour = false; btn('tour').classList.remove('on'); btn('tour').textContent = 'Tour'; document.documentElement.style.scrollBehavior = ''; } };
   const onKey = (e) => { if (e.key === 'Escape') golive(true); else if (['ArrowDown', 'ArrowUp', 'PageDown', 'PageUp', ' ', 'Home', 'End'].includes(e.key)) cancelTour(); };
@@ -394,9 +395,54 @@ function heroFx() {
   }, { passive: true });
 }
 
+// ---- the live page: scroll reveals, decoding titles, count-ups, a mouse glow on cards, a scroll bar ----
+let liveStarted = false;
+function scramble(el) {
+  if (el.children.length) return;
+  const txt = el.textContent, G = '█▓▒░<>/\\#01{}', t0 = performance.now();
+  const step = (now) => {
+    const p = clamp((now - t0) / 700, 0, 1), keep = Math.floor(txt.length * p);
+    el.textContent = txt.split('').map((c, i) => (i < keep || c === ' ' ? c : G[(Math.random() * G.length) | 0])).join('');
+    if (p < 1) requestAnimationFrame(step); else el.textContent = txt;
+  };
+  requestAnimationFrame(step);
+}
+function countUp(el) {
+  const m = el.textContent.match(/^(\D*)(\d+)(.*)$/); if (!m) return;
+  const end = +m[2], t0 = performance.now();
+  const step = (now) => {
+    const p = clamp((now - t0) / 1200, 0, 1);
+    el.textContent = m[1] + Math.round(end * (1 - Math.pow(1 - p, 3))) + m[3];
+    if (p < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+function liveFx() {
+  if (liveStarted || reduced) return; liveStarted = true;
+  const bar = document.createElement('div'); bar.id = 'progress'; document.body.append(bar);
+  const onScroll = () => { bar.style.transform = `scaleX(${clamp(scrollY / ((document.documentElement.scrollHeight - innerHeight) || 1), 0, 1)})`; };
+  addEventListener('scroll', onScroll, { passive: true }); onScroll();
+  $$('.hero-stat-box .stat-val').forEach(countUp);
+  addEventListener('mousemove', (e) => {
+    const c = e.target.closest?.('.glass-card'); if (!c) return;
+    const r = c.getBoundingClientRect(); c.style.setProperty('--gx', e.clientX - r.left + 'px'); c.style.setProperty('--gy', e.clientY - r.top + 'px');
+  }, { passive: true });
+  if (!('IntersectionObserver' in window)) return;
+  const items = $$('.section-header,.section-divider-bar,.glass-card,.hud-card').filter((el) => el.getBoundingClientRect().top + scrollY > innerHeight * .9);
+  const io = new IntersectionObserver((es) => es.forEach((e) => {
+    if (!e.isIntersecting) return;
+    const t = e.target; t.classList.add('in'); io.unobserve(t);
+    $$('.section-title,.contact-title,.flagship-title', t).forEach(scramble);
+    $$('.metric-num', t).forEach(countUp);
+    setTimeout(() => { t.classList.remove('rv', 'in'); t.style.transitionDelay = ''; }, 1100);
+  }), { threshold: .12, rootMargin: '0px 0px -40px 0px' });
+  items.forEach((el, i) => { el.classList.add('rv'); el.style.transitionDelay = (i % 3) * 90 + 'ms'; io.observe(el); });
+}
+
 export async function initFx() {
   aurora(); heroFx();
-  if (reduced || mode === 'off' || innerWidth < 700) return;
+  if (reduced) return;
+  if (mode === 'off' || innerWidth < 700) { liveFx(); return; }
   if (new URLSearchParams(location.search).get('intro') !== 'off') await intro();
   swarm();
 }
