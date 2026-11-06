@@ -323,7 +323,7 @@ body:not(.sw-run) .hero-cutout-img{animation:imgGlitch 8s infinite,imgBreathe 6s
 
 /* ---- the flock ---- */
 .fl-root{position:fixed;inset:0;z-index:2500;pointer-events:none}
-.fl-a{position:absolute;left:0;top:0;width:20px;height:20px;will-change:transform;filter:drop-shadow(0 1px 2px rgba(0,0,0,.55))}
+.fl-a{position:absolute;left:0;top:0;width:22px;height:22px;transform-origin:11px 10px;will-change:transform;filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.35))}
 @media(prefers-reduced-motion:reduce),(hover:none){.fl-root{display:none}}
 
 .sw-hint{color:#8a8a8a;font:500 11px/1 Inter,system-ui,sans-serif;letter-spacing:.02em;padding:0 4px}

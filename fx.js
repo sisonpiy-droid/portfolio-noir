@@ -540,47 +540,64 @@ function heroFx() {
   }, { passive: true });
 }
 
-// ---- the flock: the cursors trail behind your pointer like a snake; stand still and they orbit you ----
+// ---- the flock: once the build is done a cloud of cursors orbits your pointer in a slow swirl and bounces off it (like saai.pro) ----
 let flockStarted = false;
 function startFlock(seed) {
   if (flockStarted || reduced || matchMedia('(hover:none)').matches) return;
   flockStarted = true;
   if (new URLSearchParams(location.search).get('flock') === 'off') return;
   const root = document.createElement('div'); root.className = 'fl-root'; document.body.append(root);
-  const N = seed.length, lerp = (a, b, p) => a + (b - a) * p;
-  const A = seed.map((s, i) => {
+  const MAXN = 36;
+  const make = (x, y, color) => {
     const el = document.createElement('div'); el.className = 'fl-a';
-    el.innerHTML = `<svg width="20" height="20" viewBox="-10 -10 20 20"><path d="M9 0L-6 6.5L-2.5 0L-6 -6.5Z" fill="${s.color}" stroke="#fff" stroke-width="1.2" stroke-linejoin="round"/></svg>`;
+    el.innerHTML = `<svg width="22" height="22" viewBox="0 0 24 24" style="overflow:visible"><path d="M5 3l14 7.5-6 1.8-2.2 6.2z" fill="${color}" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/></svg>`;
     root.append(el);
-    return { el, x: s.x, y: s.y, ang: 0, k: i === 0 ? 16 : 18 - i * .6 };   // k: how tightly this one follows
-  });
-  let mx = innerWidth / 2, my = innerHeight / 2, pmx = mx, pmy = my, seen = false, lastMove = 0, heading = 0, spread = 0, ring = 0, ringA = 0, last = performance.now();
-  addEventListener('mousemove', (e) => { mx = e.clientX; my = e.clientY; seen = true; lastMove = performance.now(); }, { passive: true });
-  addEventListener('mousedown', () => { spread = 1; });
+    const fast = Math.random() < .25;
+    return { el, x, y, vx: 0, vy: 0, angle: 0, speed: fast ? rand(1000, 1500) : rand(300, 750), force: fast ? rand(3500, 6000) : rand(700, 1800), spin: fast ? rand(2.2, 3.4) : rand(.8, 1.8), curl: rand(-1, 1), orbit: rand(70, 170) };
+  };
+  const cs = seed.map((s) => make(s.x, s.y, s.color));
+  let mouse = null, lastT = null, time = 0, spawnCd = 0, last = performance.now();
+  const tv = { x: 0, y: 0 };
+  addEventListener('pointermove', (e) => { mouse = { x: e.clientX, y: e.clientY }; }, { passive: true });
+  document.documentElement.addEventListener('pointerleave', () => { mouse = null; });
   const loop = (now) => {
     requestAnimationFrame(loop);
-    const dt = Math.min(.05, Math.max(.001, (now - last) / 1000)); last = now;
+    const dt = clamp((now - last) / 1000, .001, .05); last = now;
     if (document.hidden) return;
-    const dx = mx - pmx, dy = my - pmy;
-    if (Math.hypot(dx, dy) / dt > 120) { let d = Math.atan2(dy, dx) - heading; d = Math.atan2(Math.sin(d), Math.cos(d)); heading += d * Math.min(1, dt * 8); }   // the V points where you are heading
-    pmx = mx; pmy = my;
-    const still = now - lastMove > 1200;
-    ring += ((still ? 1 : 0) - ring) * Math.min(1, dt * 2.5); ringA += dt * 1.3; spread = Math.max(0, spread - dt * 2.5);
-    const cs = Math.cos(heading), sn = Math.sin(heading), sc = 1 + spread * 1.8;
-    A.forEach((a, i) => {
-      const ra = ringA + (i / N) * 6.283, rx = Math.cos(ra) * 52, ry = Math.sin(ra) * 52;   // orbit ring when you stop
-      let cx, cy;                                                                          // a chain: the first follows you, each other follows the one in front
-      if (i === 0) { cx = mx - cs * 22; cy = my - sn * 22; }
-      else { const p = A[i - 1]; let ddx = a.x - p.x, ddy = a.y - p.y; const dd = Math.hypot(ddx, ddy); if (dd < 1) { ddx = -cs; ddy = -sn; } else { ddx /= dd; ddy /= dd; } cx = p.x + ddx * 24 * sc; cy = p.y + ddy * 24 * sc; }
-      const tx = seen ? lerp(cx, mx + rx * sc, ring) : seed[i].x, ty = seen ? lerp(cy, my + ry * sc, ring) : seed[i].y;
-      const k = 1 - Math.exp(-a.k * dt), ox = a.x, oy = a.y;
-      a.x += (tx - a.x) * k; a.y += (ty - a.y) * k;
-      if (i > 0 && ring < .6) { const p = A[i - 1], cx2 = a.x - p.x, cy2 = a.y - p.y, cd = Math.hypot(cx2, cy2), mx2 = 34 * sc; if (cd > mx2) { a.x = p.x + cx2 / cd * mx2; a.y = p.y + cy2 / cd * mx2; } }   // never trail further than a short link
-      const sx = (a.x - ox) / dt, sy = (a.y - oy) / dt;
-      const want = Math.hypot(sx, sy) > 40 ? Math.atan2(sy, sx) : ring > .5 ? ra + Math.PI / 2 : heading;
-      let d = want - a.ang; d = Math.atan2(Math.sin(d), Math.cos(d)); a.ang += d * Math.min(1, dt * 10);
-      a.el.style.transform = `translate(${(a.x - 10).toFixed(1)}px,${(a.y - 10).toFixed(1)}px) rotate(${a.ang.toFixed(3)}rad)`;
+    time += dt; spawnCd -= dt;
+    if (cs.length < MAXN && spawnCd <= 0) { const left = Math.random() < .5; cs.push(make(left ? -30 : innerWidth + 30, rand(.1, .9) * innerHeight, COLORS[cs.length % COLORS.length])); spawnCd = .04; }
+    // the orbit centre is your pointer; with no pointer it wanders on its own
+    const o = mouse || { x: innerWidth * (.5 + .28 * Math.sin(time * .37)), y: innerHeight * (.5 + .25 * Math.sin(time * .53 + 1)) };
+    if (mouse && lastT) { const k = Math.min(1, dt * 18); tv.x += ((mouse.x - lastT.x) / dt - tv.x) * k; tv.y += ((mouse.y - lastT.y) / dt - tv.y) * k; }
+    lastT = mouse ? { x: mouse.x, y: mouse.y } : null;
+    const R = 135 * (1 + .18 * Math.sin(time * .55)), swirl = Math.tanh(Math.cos(time * .11) * 3);
+    const want = cs.map((c) => {
+      const vx = c.x - o.x, vy = c.y - o.y, d = Math.hypot(vx, vy) || .01, nx = vx / d, ny = vy / d, ang = Math.atan2(vy, vx);
+      const rr = R * (1 + .3 * Math.sin(3 * ang + time * .7)) + (c.orbit - 120) * .55;   // a three-lobed ring, each cursor on its own radius
+      const tang = 300 * (.7 + c.spin * .2) * swirl, rad = clamp((rr - d) * 4, -2600, 1400), far = clamp((d - rr) / 600, 0, 1);
+      return [-ny * tang + nx * rad - ny * c.curl * 400 * far, nx * tang + ny * rad + nx * c.curl * 400 * far];
     });
+    cs.forEach((c, i) => {
+      let ax = 0, ay = 0, ws = 0;
+      for (let j = 0; j < cs.length; j++) { if (j === i) continue; const q = cs[j], d = Math.hypot(q.x - c.x, q.y - c.y); if (d > 90) continue; const w = 1 - d / 90; ax += q.vx * w; ay += q.vy * w; ws += w; }   // match the neighbours' heading
+      let [fx, fy] = want[i];
+      if (ws > 0) { fx = fx * .7 + (ax / ws) * .3; fy = fy * .7 + (ay / ws) * .3; }
+      const dist = Math.max(0, Math.hypot(c.x - o.x, c.y - o.y) - 180), maxV = c.speed * (1.3 + Math.min(3.2, dist / 90)), L = Math.hypot(fx, fy);
+      if (L > maxV) { fx *= maxV / L; fy *= maxV / L; }
+      let gx = (fx - c.vx) * 6, gy = (fy - c.vy) * 6; const maxF = c.force * (1.4 + Math.min(5, dist / 50)), G = Math.hypot(gx, gy);
+      if (G > maxF) { gx *= maxF / G; gy *= maxF / G; }
+      c.vx += gx * dt; c.vy += gy * dt; c.x += c.vx * dt; c.y += c.vy * dt;
+    });
+    if (mouse) for (const c of cs) {   // they bounce off your pointer
+      const vx = c.x - mouse.x, vy = c.y - mouse.y, d = Math.hypot(vx, vy) || .01; if (d >= 48) continue;
+      const nx = vx / d, ny = vy / d; c.x = mouse.x + nx * 48; c.y = mouse.y + ny * 48;
+      const rel = (c.vx - tv.x) * nx + (c.vy - tv.y) * ny; if (rel < 0) { c.vx -= nx * rel * 1.6; c.vy -= ny * rel * 1.6; }
+      c.vx += nx * 260; c.vy += ny * 260;
+    }
+    for (const c of cs) {
+      if (Math.hypot(c.vx, c.vy) >= 30) { const d = ((((Math.atan2(c.vy, c.vx) * 180) / Math.PI + 128 - c.angle + 540) % 360) + 360) % 360 - 180; c.angle += d * Math.min(1, dt * 8); }   // the arrow points where it is flying
+      c.el.style.transform = `translate(${(c.x - 11).toFixed(1)}px,${(c.y - 10).toFixed(1)}px) rotate(${c.angle.toFixed(1)}deg)`;
+    }
   };
   requestAnimationFrame(loop);
 }
