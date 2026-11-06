@@ -51,7 +51,7 @@ function aurora() {
 
 // ---- swarm ----
 const COLORS = ['#F24E1E', '#A259FF', '#1ABCFE', '#0ACF83', '#FF7262', '#FFC700', '#E8467C', '#14AE5C', '#9747FF'];
-const SPEEDS = [1, 2, 4];
+const SPEEDS = [1, 2, 4, 8];
 const IMG_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.6"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M21 16l-5-5-8 9"/></svg>';
 const ARROW = (c) => `<svg width="22" height="22" viewBox="0 0 24 24" style="left:-3px;top:-3px"><path d="M5 3l14 7.5-6 1.8-2.2 6.2z" fill="${c}" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/></svg>`;
 const CROSS = (c) => `<svg width="24" height="24" viewBox="0 0 24 24" style="left:-12px;top:-12px"><path d="M12 4v16M4 12h16" stroke="#fff" stroke-width="4.5" stroke-linecap="round"/><path d="M12 4v16M4 12h16" stroke="${c}" stroke-width="2" stroke-linecap="round"/></svg>`;
@@ -76,7 +76,7 @@ function swarm() {
   const visible = (el) => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
   const doc = (el) => { const r = el.getBoundingClientRect(); return { top: r.top + scrollY, left: r.left }; };
   const depth = (el) => { let d = 0; for (let e = el; e; e = e.parentElement) d++; return d; };
-  const add = (type, el, extra = {}) => { const p = doc(el); const L = { type, el, top: p.top, left: p.left, depth: depth(el), done: false, by: null, ...extra }; layers.push(L); return L; };
+  const add = (type, el, extra = {}) => { const p = doc(el); const L = { type, el, top: p.top, left: p.left, h: el.getBoundingClientRect().height, lh: parseFloat(getComputedStyle(el).lineHeight) || 20, fixed: !!el.closest('.dock-container'), depth: depth(el), done: false, by: null, ...extra }; layers.push(L); return L; };
 
   for (const el of all) {
     if (el === gridEl || gridEl?.contains(el) || el.closest('#toast') || !visible(el)) continue;
@@ -148,7 +148,7 @@ function swarm() {
   root.innerHTML = `<div class="sw-shield"></div><div class="sw-ruler sw-rt"></div><div class="sw-ruler sw-rl"></div><div class="sw-intro">PS</div>
     <div class="sw-hud"><span class="sw-dots">${COLORS.slice(0, 4).map((c) => `<i style="background:${c}"></i>`).join('')}</span>
     <span class="sw-status"><span id="sw-ag"><b>${N}</b> agents</span><span id="sw-ly"><b>0</b> / ${total} layers</span><span class="sw-bar"><i></i></span></span>
-    <button data-a="tour" class="on">Touring</button><button data-a="speed">1×</button><button data-a="live" class="pri" hidden>Go live</button><button data-a="x" class="x" title="Exit (Esc)">✕</button></div>`;
+    <button data-a="tour" class="on">Touring</button><button data-a="speed">2×</button><button data-a="live" class="pri" hidden>Go live</button><button data-a="x" class="x" title="Exit (Esc)">✕</button></div>`;
   document.body.append(root);
   const hud = $('.sw-hud', root), lyEl = $('#sw-ly', root), fill = $('.sw-bar i', root), intro = $('.sw-intro', root);
   const btn = (a) => $(`[data-a="${a}"]`, root);
@@ -161,7 +161,7 @@ function swarm() {
     return { el, color, shape: 'arrow', x: left ? -40 : innerWidth + 40, y: rand(120, innerHeight - 120), st: 'idle', wake: .3 + i * .22, speed: rand(480, 1000), L: null, t0: 0, dur: 0, fx: 0, fy: 0, bend: 0, wx: innerWidth / 2, wy: innerHeight / 2, wt: 0, ph: null, sel: null, typed: 0 };
   });
 
-  let T = 0, last = performance.now(), done = 0, tour = true, speed = 1, over = false, finishing = false;
+  let T = 0, last = performance.now(), done = 0, tour = true, speed = 2, over = false, finishing = false;
   const setShape = (a, s) => { if (a.shape !== s) { a.shape = s; a.el.innerHTML = s === 'cross' ? CROSS(a.color) : ARROW(a.color); } };
   const rectNow = (L) => L.el.getBoundingClientRect();
   const finish = (L) => {
@@ -184,14 +184,15 @@ function swarm() {
     if (L.type === 'rect') L.el.classList.remove('sw-r'); else if (L.type === 'img') L.el.classList.remove('sw-i');
     finish(L);
   };
-  const reach = (L) => { const r = rectNow(L); return r.top < innerHeight - 8 ? 1 : 0; };
+  const topNow = (L) => L.top - (L.fixed ? 0 : scrollY);
+  const reach = (L) => topNow(L) < innerHeight - 8;
   const eligible = (L) => !L.done && !L.by && (!L.dep || L.dep.done);
   const pick = () => {
     for (const L of layers) {
       if (!eligible(L)) continue;
-      const r = rectNow(L);
-      if (r.bottom < -60) { instant(L); continue; }
-      if (r.top < innerHeight - 8) return L;
+      const t = topNow(L);
+      if (t + L.h < -60) { instant(L); continue; }
+      if (t < innerHeight - 8) return L;
     }
     return null;
   };
@@ -267,7 +268,7 @@ function swarm() {
         }
       } else if (a.st === 'drag' || a.st === 'frame') {
         const r = rectNow(L), p = clamp((T - a.t0) / a.dur, 0, 1), e = ease(p);
-        const lh = parseFloat(getComputedStyle(L.el).lineHeight) || 20;
+        const lh = L.lh;
         const w = Math.max(1, e * r.width), h = a.st === 'frame' ? Math.max(1, Math.min(r.height, lh) * e) : Math.max(1, e * r.height);
         place(a.sel, r, w, h); $('em', a.sel).textContent = `${Math.round(w)} × ${Math.round(h)}`;
         if (a.ph) place(a.ph, r, w, h);
