@@ -415,7 +415,7 @@ function intro() {
     const oElastic = (p) => (p <= 0 ? 0 : p >= 1 ? 1 : Math.pow(2, -10 * p) * Math.sin((p * 10 - .75) * (2 * Math.PI) / 3) + 1);
     const inCubic = (p) => p * p * p;
     const hash = (n) => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };   // deterministic noise, so any frame can be drawn on its own
-    const END = 4.1, SKIP_TO = 3.4, SLOW = 1.1;   // SLOW stretches the timeline: about 4.5 seconds of real time
+    const END = 3.1, SKIP_TO = 2.4, SLOW = 1.35;   // SLOW stretches the timeline: about 4.2 seconds of real time
 
     const font = (size, family = 'Bebas Neue', weight = 400) => { ctx.font = `${weight} ${size}px "${family}", Impact, sans-serif`; };
     const text = (s, x, y, size, color, o = {}) => {
@@ -453,28 +453,7 @@ function intro() {
       ctx.restore();
     };
 
-    // ---- scene 1: the ball (0 – 1.0) ----
-    const G = () => H * .76, R = () => 24 * u;
-    const ballAt = (t) => {
-      const r = R(), g = G(); let y;
-      if (t < .35) { const p = t / .35; y = lerp(-2 * r, g - r, p * p); }
-      else { y = g - r; for (const [a, b, h] of [[.35, .72, .32], [.72, .92, .11], [.92, 1.02, .03]]) if (t >= a && t < b) { const p = (t - a) / (b - a); y = g - r - H * h * 4 * p * (1 - p); } }
-      return { x: W * .2 + W * .6 * c01(t / 1.05), y };
-    };
-    const scene1 = (t) => {
-      const g = G(), r = R();
-      polyline([[W * .1, g], [W * .9, g]], easeOut(seg(t, 0, .3)), INK, 1.6 * u);
-      for (let k = 10; k >= 1; k--) { const tt = t - k * .03; if (tt > 0) { const b = ballAt(tt); ctx.save(); ctx.globalAlpha = .35 * (1 - k / 11); ctx.strokeStyle = INK; ctx.lineWidth = 1.3 * u; ctx.beginPath(); ctx.arc(b.x, b.y, r, 0, 7); ctx.stroke(); ctx.restore(); } }
-      const b = ballAt(t), vy = (ballAt(t + .008).y - ballAt(t - .008).y) / .016;
-      let sy = 1 + c01(Math.abs(vy) / (H * 8)) * .35, sx = 1 / Math.sqrt(sy);
-      for (const [ti, k] of [[.35, .4], [.72, .3], [.92, .2]]) { const q = (t - ti) / .09; if (q >= 0 && q < 1) { const s = Math.sin(Math.PI * q) * k; sy = 1 - s; sx = 1 + s * .9; } }
-      ctx.save(); ctx.translate(b.x, b.y + r * (1 - sy)); ctx.scale(sx, sy); ctx.fillStyle = RED; ctx.beginPath(); ctx.arc(0, 0, r, 0, 7); ctx.fill(); ctx.restore();
-      hand('zero fluff', W * .3, H * .24, 44 * u, RED, seg(t, .3, .62), -.07);
-      hand('squash!', W * .52, g + 74 * u, 38 * u, INK, seg(t, .5, .8), -.04);
-      arrow(W * .55, g + 48 * u, ballAt(.72).x + 6 * u, g + 8 * u, -22 * u, easeOut(seg(t, .5, .85)), INK);
-    };
-
-    // ---- scene 2: hard-hitting words (1.0 – 2.6) ----
+    // ---- scene 1: hard-hitting words (0 – 1.2) ----
     const WORDS = [['BUILD.', 0, .4], ['BREAK.', .4, .8], ['SHIP.', .8, 1.2]];
     const scene2 = (t) => {
       for (const [w, a, b] of WORDS) {
@@ -502,7 +481,7 @@ function intro() {
       }
     };
 
-    // ---- scene 4: the name card (3.5 – 5.2) ----
+    // ---- scene 2: the name card (1.2 – 3.1) ----
     let dot = { x: W / 2, y: H / 2, r: 0 };
     const scene4 = (t) => {
       const sz = Math.min(H * .3, (W * .8) / 3.6), y1 = H * .46, y2 = y1 + sz * .96; let endX = 0;
@@ -528,15 +507,15 @@ function intro() {
       const gr = ctx.createRadialGradient(W / 2, H / 2, H * .1, W / 2, H / 2, H * 1.1); gr.addColorStop(0, 'rgba(239,68,68,.12)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = gr; ctx.fillRect(0, 0, W, H);
       ctx.strokeStyle = 'rgba(255,255,255,.035)'; ctx.lineWidth = 1; ctx.beginPath(); for (let x = W * .17; x < W; x += W * .33) { ctx.moveTo(x, 0); ctx.lineTo(x, H); } ctx.stroke();
       ctx.save();
-      if (t < 1.0) scene1(t); else if (t < 2.2) scene2(t - 1.0); else scene4(t - 2.2);
+      if (t < 1.2) scene2(t); else scene4(t - 1.2);
       ctx.restore();
-      for (const tb of [1.0, 2.2]) bar(t, tb);
-      if (t >= 3.4) {   // the red dot swallows the screen, then dark takes over
+      for (const tb of [1.2]) bar(t, tb);
+      if (t >= 2.4) {   // the red dot swallows the screen, then dark takes over
         const diag = Math.hypot(W, H) * 1.05;
-        ctx.fillStyle = RED; ctx.beginPath(); ctx.arc(dot.x, dot.y, dot.r + diag * inCubic(seg(t, 3.4, 3.75)), 0, 7); ctx.fill();
-        ctx.fillStyle = DARK; ctx.beginPath(); ctx.arc(dot.x, dot.y, diag * easeOut(seg(t, 3.6, 4.1)), 0, 7); ctx.fill();
+        ctx.fillStyle = RED; ctx.beginPath(); ctx.arc(dot.x, dot.y, dot.r + diag * inCubic(seg(t, 2.4, 2.75)), 0, 7); ctx.fill();
+        ctx.fillStyle = DARK; ctx.beginPath(); ctx.arc(dot.x, dot.y, diag * easeOut(seg(t, 2.6, 3.1)), 0, 7); ctx.fill();
       }
-      if (t < 3.4) { ctx.fillStyle = RED; ctx.fillRect(0, H - 3, W * (t / END), 3); text(`00:0${Math.min(4, Math.floor(t * SLOW))} / 00:04`, 18, H - 14, 12 * u, GREY, { family: 'JetBrains Mono', weight: 500 }); }
+      if (t < 2.4) { ctx.fillStyle = RED; ctx.fillRect(0, H - 3, W * (t / END), 3); text(`00:0${Math.min(4, Math.floor(t * SLOW))} / 00:04`, 18, H - 14, 12 * u, GREY, { family: 'JetBrains Mono', weight: 500 }); }
     };
 
     let t0 = performance.now(), off = 0, raf, finished = false;
