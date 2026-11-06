@@ -106,11 +106,11 @@ function swarm() {
     for (; p; p = p.parentElement) if (rectOf.has(p) && rectOf.get(p) !== L) { L.dep = rectOf.get(p); break; }
   }
   layers.sort((a, b) => a.top - b.top || a.depth - b.depth || (a.type === 'rect' ? -1 : 1) - (b.type === 'rect' ? -1 : 1) || a.left - b.left);
+  // Only the subjects are built while the swarm runs: boxes, titles and one line on what each thing is. The rest waits for the end.
+  const DEFER = '.hero-actions,.hero-stats-row,.hud-tech-tags,.flagship-meta,.flagship-metrics-row,.flagship-links,.saai-architecture-explorer,.spec-list,.subgrid-footer,.bento-footer,.bento-controls,.bento-link,.exp-sub,.exp-note,.edu-line,.about-text + .about-text,.quote-box,.principle-desc,.email-action-box,.social-links-row,.footer-meta,.about-grid .tech-tags-group';
+  const deferred = [];
+  for (let i = layers.length - 1; i >= 0; i--) if (layers[i].el.closest(DEFER)) deferred.push(layers.splice(i, 1)[0]);
   const total = layers.length;
-  for (const L of layers) {   // only the subjects (short text) get built; anything longer is a skeleton until the swarm ends
-    const tl = L.nodes ? L.nodes.reduce((n, x) => n + x.data.trim().length, 0) : 0;
-    L.long = tl >= 37;
-  }
 
   // small svg icons (button arrows, link icons) show once their owner is built
   const icons = $$('svg', roots[1]).filter((s) => !s.closest('.hero-wordmark-svg')).concat($$('svg', roots[0]));
@@ -121,11 +121,16 @@ function swarm() {
   // ---------- 2. hide everything ----------
   document.body.classList.add('sw-run');
   gridEl?.classList.add('sw-i');
+  const oneLine = (t) => {   // length of the first sentence, cut to about one line
+    const m = t.match(/^[\s\S]{20,110}?[.!?](?=\s|$)/);
+    if (m) return m[0].length;
+    if (t.length <= 96) return t.length;
+    const cut = t.lastIndexOf(' ', 90); return cut > 20 ? cut : 90;
+  };
   for (const L of layers) {
     if (L.type === 'rect') L.el.classList.add('sw-r');
     else if (L.type === 'img') L.el.classList.add('sw-i');
-    if (L.nodes && L.long) { L.el.style.setProperty('--lh', L.lh + 'px'); L.el.classList.add('sw-sk'); }
-    else if (L.nodes) {
+    if (L.nodes) {
       L.el.classList.add('sw-t');
       L.units = L.nodes.map((n) => {
         const w = document.createElement('span'); w.className = 'sw-w';
@@ -134,7 +139,13 @@ function swarm() {
         return { w, typed, rest, full: n.data, node: n };
       });
       L.len = L.units.reduce((s, u) => s + u.full.length, 0);
+      const full = L.units.map((u) => u.full).join('');
+      if (full.trim().length >= 37) { L.cap = oneLine(full); L.len = Math.min(L.len, L.cap); }   // long text: only its first line is typed
     }
+  }
+  for (const L of deferred) {   // hidden until the swarm ends
+    if (L.type === 'rect') L.el.classList.add('sw-r'); else if (L.type === 'img') L.el.classList.add('sw-i');
+    if (L.nodes) L.el.classList.add('sw-sk');
   }
   const setTyped = (L, n) => {
     let left = n, last = null;
@@ -174,7 +185,8 @@ function swarm() {
     L.done = true; done++;
     const left = pending.get(L.el) - 1; pending.set(L.el, left);
     if (left === 0) $$('svg', L.el).forEach((s) => s.classList.remove('sw-ic'));
-    if (L.units) restoreText(L);
+    if (L.units && !L.cap) restoreText(L);
+    else if (L.cap) $$('.sw-caret', L.el).forEach((c) => c.remove());
   };
   const styleRect = (L) => {
     L.el.classList.add('sw-fade'); L.el.classList.remove('sw-r');
@@ -188,6 +200,7 @@ function swarm() {
   const instant = (L) => {   // build a layer with no cursor (skipped or scrolled past)
     if (L.done) return;
     if (L.type === 'rect') L.el.classList.remove('sw-r'); else if (L.type === 'img') L.el.classList.remove('sw-i');
+    if (L.cap && L.units) setTyped(L, L.cap);
     finish(L);
   };
   const topNow = (L) => L.top - (L.fixed ? 0 : scrollY);
@@ -220,7 +233,8 @@ function swarm() {
     removeEventListener('keydown', onKey); removeEventListener('wheel', cancelTour); removeEventListener('touchstart', cancelTour); removeEventListener('scroll', onScroll);
     for (const a of ag) { a.ph?.remove(); a.sel?.remove(); if (a.L && !a.L.done && a.L.units) { restoreText(a.L); a.L.done = true; } }
     layers.forEach(instant);
-    for (const L of layers) if (L.long) { L.el.classList.remove('sw-sk'); L.el.style.removeProperty('--lh'); L.el.classList.add('sw-in'); setTimeout(() => L.el.classList.remove('sw-in'), 600); }
+    for (const L of layers) if (L.cap && L.units) { restoreText(L); L.el.classList.add('sw-in'); setTimeout(() => L.el.classList.remove('sw-in'), 600); }
+    for (const L of deferred) { L.el.classList.remove('sw-r', 'sw-i', 'sw-sk'); L.el.classList.add('sw-in'); setTimeout(() => L.el.classList.remove('sw-in'), 600); }
     icons.forEach((s) => s.classList.remove('sw-ic'));
     document.body.classList.remove('sw-run'); gridEl?.classList.remove('sw-i');
     document.documentElement.style.scrollBehavior = '';
@@ -285,7 +299,6 @@ function swarm() {
         if (p >= 1) {
           if (a.st === 'frame') {
             const fr = rectNow(L); place(a.sel, fr, fr.width, fr.height); setShape(a, 'arrow');
-            if (L.long) { a.sel.remove(); a.sel = null; a.st = 'settle'; a.t0 = T; a.dur = .12; continue; }
             a.sel.classList.add('thin');
             L.el.classList.remove('sw-t'); a.st = 'type'; a.t0 = T; a.typed = 0;
             a.cps = clamp(L.len / 2.6, 38, 90) * rand(.9, 1.1);    // chars per second, a long paragraph never takes more than ~3s
