@@ -1,5 +1,7 @@
 import { profile as p, stats, about, scoreParts, flagships, filters, matrix } from './content.js';
 
+import { initFx } from './fx.js';
+
 const $ = (s, r = document) => r.querySelector(s);
 const chips = (a) => a.map((t) => `<span class="chip">${t}</span>`).join('');
 const links = (a) => a.map(([l, h], i) => `<a class="btn ${i ? 'ghost' : ''}" href="${h}" target="_blank" rel="noopener">${l} →</a>`).join('');
@@ -87,12 +89,13 @@ $('#app').innerHTML = `
 </section>
 <footer><span>© 2026 ${p.full}.</span><span class="dim">Noir &amp; Crimson. Built by hand, tested before shipped.</span></footer>`;
 
-// score inspector
+// score inspector: fade-swap the text
 $('#inspect')?.addEventListener('click', (e) => {
   const b = e.target.closest('button'); if (!b) return;
-  const s = scoreParts[+b.dataset.i];
+  const s = scoreParts[+b.dataset.i], d = $('#inspect-d');
   $('#inspect').querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b));
-  $('#inspect-d').innerHTML = `<b>${s.k} · ${s.v}/100</b> ${s.d}`;
+  d.classList.add('swap');
+  setTimeout(() => { d.innerHTML = `<b>${s.k} · ${s.v}/100</b> ${s.d}`; d.classList.remove('swap'); }, 180);
 });
 
 // matrix filter
@@ -106,11 +109,15 @@ draw('All');
 $('#filters').addEventListener('click', (e) => {
   const b = e.target.closest('button'); if (!b) return;
   $('#filters').querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b));
-  draw(b.dataset.f);
+  grid.classList.add('out');
+  setTimeout(() => { draw(b.dataset.f); grid.classList.remove('out'); }, 180);
 });
 
-// copy email
-$('#copy').addEventListener('click', async (e) => {
-  try { await navigator.clipboard.writeText(p.email); e.target.textContent = 'Copied ✓'; } catch { e.target.textContent = p.email; }
-  setTimeout(() => (e.target.textContent = 'Copy email address'), 1800);
+// copy email, with a toast
+let tt;
+const toast = (msg) => { $('#toast-msg').textContent = msg; $('#toast').classList.add('show'); clearTimeout(tt); tt = setTimeout(() => $('#toast').classList.remove('show'), 3000); };
+$('#copy').addEventListener('click', async () => {
+  try { await navigator.clipboard.writeText(p.email); toast(`Copied to clipboard: ${p.email}`); } catch { toast(`Direct email: ${p.email}`); }
 });
+
+initFx();
