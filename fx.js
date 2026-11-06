@@ -417,7 +417,7 @@ function intro() {
     const hash = (n) => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };   // deterministic noise, so any frame can be drawn on its own
     const END = 3.1, SKIP_TO = 2.4, SLOW = 1.35;   // SLOW stretches the timeline: about 4.2 seconds of real time
 
-    const font = (size, family = 'Bebas Neue', weight = 400) => { ctx.font = `${weight} ${size}px "${family}", Impact, sans-serif`; };
+    const font = (size, family = 'Archivo Black', weight = 400) => { ctx.font = `${weight} ${size}px "${family}", Impact, sans-serif`; };
     const text = (s, x, y, size, color, o = {}) => {
       ctx.save(); ctx.globalAlpha = o.alpha ?? 1; ctx.translate(x, y); if (o.rot) ctx.rotate(o.rot); ctx.scale(o.sx ?? 1, o.sy ?? 1);
       font(size, o.family, o.weight); ctx.fillStyle = color; ctx.textAlign = o.align || 'left'; ctx.textBaseline = 'alphabetic'; ctx.fillText(s, 0, 0); ctx.restore();
@@ -484,16 +484,12 @@ function intro() {
     // ---- scene 2: the name card (1.2 – 3.1) ----
     let dot = { x: W / 2, y: H / 2, r: 0 };
     const scene4 = (t) => {
-      const sz = Math.min(H * .3, (W * .8) / 3.6), y1 = H * .46, y2 = y1 + sz * .96; let endX = 0;
+      font(100); const sz = Math.min(H * .27, (W * .8) / (ctx.measureText('SISONDIA').width / 100)), y1 = H * .46, y2 = y1 + sz * .96; let endX = 0;
       letters('PIYUSH', sz, (ch, i, x) => { const p = oBack(seg(t, i * .03, i * .03 + .2)); text(ch, x, y1 + (1 - p) * H * .5, sz, INK, { alpha: c01(p * 2) }); });
       letters('SISONDIA', sz, (ch, i, x, w) => { const p = oBack(seg(t, .15 + i * .028, .15 + i * .028 + .2)); text(ch, x, y2 + (1 - p) * H * .5, sz, INK, { alpha: c01(p * 2) }); endX = x + w; });
       const dr = 20 * u * oElastic(seg(t, .5, .9)); dot = { x: endX + 20 * u, y: y2 - 8 * u, r: dr };
       ctx.fillStyle = RED; ctx.beginPath(); ctx.arc(dot.x, dot.y, dr, 0, 7); ctx.fill();
       text('AI ENGINEER · I SHIP END TO END', W / 2, y2 + 44 * u, 17 * u, GREY, { family: 'JetBrains Mono', weight: 500, align: 'center', alpha: seg(t, .35, .6) });
-      const nx = dot.x - 300 * u, ny = y2 + 108 * u;
-      hand('open to roles', nx, ny, 42 * u, RED, seg(t, .6, .9), -.04);
-      arrow(nx + 215 * u, ny - 16 * u, dot.x - 8 * u, y2 + 8 * u, 36 * u, easeOut(seg(t, .65, .95)), RED);
-      squiggle(nx, ny + 14 * u, 205 * u, seg(t, .85, 1.15), RED);
     };
 
     // ---- the frame ----
@@ -523,7 +519,7 @@ function intro() {
     const skip = () => { const raw = (performance.now() - t0) / 1000 / SLOW + off; if (raw < SKIP_TO) off += SKIP_TO - raw; };
     addEventListener('keydown', skip); root.addEventListener('click', skip);
     const loop = () => { const t = (performance.now() - t0) / 1000 / SLOW + off; render(Math.min(t, END)); if (t >= END) end(); else raf = requestAnimationFrame(loop); };
-    const fonts = Promise.race([Promise.all([document.fonts.load('400 100px "Bebas Neue"'), document.fonts.load('600 40px Caveat'), document.fonts.load('500 14px "JetBrains Mono"')]), new Promise((r) => setTimeout(r, 1500))]);
+    const fonts = Promise.race([Promise.all([document.fonts.load('400 100px "Archivo Black"'), document.fonts.load('600 40px Caveat'), document.fonts.load('500 14px "JetBrains Mono"')]), new Promise((r) => setTimeout(r, 1500))]);
     fonts.then(() => { t0 = performance.now(); raf = requestAnimationFrame(loop); });
     window.__introRender = render;
   });
