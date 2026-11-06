@@ -170,7 +170,7 @@ function swarm() {
   root.innerHTML = `<div class="sw-shield"></div><div class="sw-ruler sw-rt"></div><div class="sw-ruler sw-rl"></div><canvas class="sw-fx"></canvas><div class="sw-intro">PS</div>
     <div class="sw-hud"><span class="sw-dots">${COLORS.slice(0, 4).map((c) => `<i style="background:${c}"></i>`).join('')}</span>
     <span class="sw-status"><span id="sw-ag"><b>${N}</b> agents</span><span id="sw-ly"><b>0</b> / ${total} layers</span><span class="sw-bar"><i></i></span></span>
-    <button data-a="tour" class="on">Touring</button><button data-a="speed">2×</button><button data-a="live" class="pri" hidden>Go live</button><button data-a="x" class="x" title="Exit (Esc)">✕</button></div>`;
+    <span class="sw-hint">press any key to skip</span><button data-a="tour" class="on">Touring</button><button data-a="speed">2×</button><button data-a="live" class="pri" hidden>Go live</button><button data-a="x" class="x" title="Exit (Esc)">✕</button></div>`;
   document.body.append(root);
   const hud = $('.sw-hud', root), lyEl = $('#sw-ly', root), fill = $('.sw-bar i', root), intro = $('.sw-intro', root);
   const btn = (a) => $(`[data-a="${a}"]`, root);
@@ -278,7 +278,7 @@ function swarm() {
     liveFx();
   };
   const cancelTour = () => { lastUser = T; if (tour) { tour = false; btn('tour').classList.remove('on'); btn('tour').textContent = 'Tour'; document.documentElement.style.scrollBehavior = ''; } };
-  const onKey = (e) => { if (e.key === 'Escape') golive(true); else if (['ArrowDown', 'ArrowUp', 'PageDown', 'PageUp', ' ', 'Home', 'End'].includes(e.key)) cancelTour(); };
+  const onKey = (e) => { if (['Shift', 'Control', 'Alt', 'Meta', 'CapsLock', 'Tab'].includes(e.key)) return; golive(true); };   // any key skips
   const onScroll = () => { if (Math.abs(scrollY - autoY) > 3) cancelTour(); };
   addEventListener('keydown', onKey); addEventListener('wheel', cancelTour, { passive: true }); addEventListener('touchstart', cancelTour, { passive: true }); addEventListener('scroll', onScroll, { passive: true });
   document.documentElement.style.scrollBehavior = 'auto';
@@ -540,7 +540,7 @@ function heroFx() {
   }, { passive: true });
 }
 
-// ---- the flock: the cursors fly into a V behind your pointer and follow it; stand still and they orbit you ----
+// ---- the flock: the cursors trail behind your pointer like a snake; stand still and they orbit you ----
 let flockStarted = false;
 function startFlock(seed) {
   if (flockStarted || reduced || matchMedia('(hover:none)').matches) return;
@@ -552,7 +552,7 @@ function startFlock(seed) {
     const el = document.createElement('div'); el.className = 'fl-a';
     el.innerHTML = `<svg width="20" height="20" viewBox="-10 -10 20 20"><path d="M9 0L-6 6.5L-2.5 0L-6 -6.5Z" fill="${s.color}" stroke="#fff" stroke-width="1.2" stroke-linejoin="round"/></svg>`;
     root.append(el);
-    return { el, x: s.x, y: s.y, ang: 0, k: 7 + (i % 4) * 1.4 - i * .12 };   // k: how tightly this one follows, so the flock trails a little
+    return { el, x: s.x, y: s.y, ang: 0, k: i === 0 ? 16 : 18 - i * .6 };   // k: how tightly this one follows
   });
   let mx = innerWidth / 2, my = innerHeight / 2, pmx = mx, pmy = my, seen = false, lastMove = 0, heading = 0, spread = 0, ring = 0, ringA = 0, last = performance.now();
   addEventListener('mousemove', (e) => { mx = e.clientX; my = e.clientY; seen = true; lastMove = performance.now(); }, { passive: true });
@@ -568,13 +568,14 @@ function startFlock(seed) {
     ring += ((still ? 1 : 0) - ring) * Math.min(1, dt * 2.5); ringA += dt * 1.3; spread = Math.max(0, spread - dt * 2.5);
     const cs = Math.cos(heading), sn = Math.sin(heading), sc = 1 + spread * 1.8;
     A.forEach((a, i) => {
-      const row = Math.ceil(i / 2), side = i % 2 ? 1 : -1;
-      const bx = i === 0 ? -26 : -row * 36 - 22, by = i === 0 ? 14 : side * row * 28;      // V formation: x is behind the pointer, y is sideways
-      const vx = bx * cs - by * sn, vy = bx * sn + by * cs;
-      const ra = ringA + (i / N) * 6.283, rx = Math.cos(ra) * 52, ry = Math.sin(ra) * 52;  // orbit ring when you stop
-      const tx = seen ? mx + lerp(vx, rx, ring) * sc : seed[i].x, ty = seen ? my + lerp(vy, ry, ring) * sc : seed[i].y;
+      const ra = ringA + (i / N) * 6.283, rx = Math.cos(ra) * 52, ry = Math.sin(ra) * 52;   // orbit ring when you stop
+      let cx, cy;                                                                          // a chain: the first follows you, each other follows the one in front
+      if (i === 0) { cx = mx - cs * 22; cy = my - sn * 22; }
+      else { const p = A[i - 1]; let ddx = a.x - p.x, ddy = a.y - p.y; const dd = Math.hypot(ddx, ddy); if (dd < 1) { ddx = -cs; ddy = -sn; } else { ddx /= dd; ddy /= dd; } cx = p.x + ddx * 24 * sc; cy = p.y + ddy * 24 * sc; }
+      const tx = seen ? lerp(cx, mx + rx * sc, ring) : seed[i].x, ty = seen ? lerp(cy, my + ry * sc, ring) : seed[i].y;
       const k = 1 - Math.exp(-a.k * dt), ox = a.x, oy = a.y;
       a.x += (tx - a.x) * k; a.y += (ty - a.y) * k;
+      if (i > 0 && ring < .6) { const p = A[i - 1], cx2 = a.x - p.x, cy2 = a.y - p.y, cd = Math.hypot(cx2, cy2), mx2 = 34 * sc; if (cd > mx2) { a.x = p.x + cx2 / cd * mx2; a.y = p.y + cy2 / cd * mx2; } }   // never trail further than a short link
       const sx = (a.x - ox) / dt, sy = (a.y - oy) / dt;
       const want = Math.hypot(sx, sy) > 40 ? Math.atan2(sy, sx) : ring > .5 ? ra + Math.PI / 2 : heading;
       let d = want - a.ang; d = Math.atan2(Math.sin(d), Math.cos(d)); a.ang += d * Math.min(1, dt * 10);
