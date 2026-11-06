@@ -327,3 +327,20 @@ body:not(.sw-run) .hero-cutout-img{animation:imgGlitch 8s infinite,imgBreathe 6s
 @media(prefers-reduced-motion:reduce),(hover:none){.fl-root{display:none}}
 
 .sw-hint{color:#8a8a8a;font:500 11px/1 Inter,system-ui,sans-serif;letter-spacing:.02em;padding:0 4px}
+
+/* ---- hero animations once the page is live: PORTFOLIO, the name and the photo ---- */
+body:not(.sw-run) .hero-wordmark-svg text{stroke-dasharray:2200;animation:wmDraw 2.4s cubic-bezier(.3,.6,.2,1) both,wmPulse 5s ease-in-out 2.4s infinite alternate}
+@keyframes wmDraw{from{stroke-dashoffset:2200;fill:rgba(201,58,58,0)}60%{fill:rgba(201,58,58,0)}to{stroke-dashoffset:0;fill:rgba(201,58,58,.22)}}
+@keyframes wmPulse{from{stroke:#c93a3a;fill:rgba(201,58,58,.18)}to{stroke:#ff5a5a;fill:rgba(201,58,58,.34)}}
+body:not(.sw-run) .hero-wordmark-svg{animation:wmBreathe 7s ease-in-out infinite}
+@keyframes wmBreathe{0%,100%{scale:1}50%{scale:1.02}}
+
+body:not(.sw-run) .hero-name{background-image:linear-gradient(110deg,transparent 35%,rgba(255,255,255,.38) 50%,transparent 65%);background-size:250% 100%;background-repeat:no-repeat;animation:nameGlitch 6.5s infinite,nameFloat 4s ease-in-out infinite,nameSheen 3.6s linear infinite}
+@keyframes nameFloat{0%,100%{translate:0 0}50%{translate:0 -5px}}
+@keyframes nameSheen{from{background-position:140% 0}to{background-position:-40% 0}}
+
+body:not(.sw-run) .hero-cutout-wrap{animation:photoFloat 6s ease-in-out infinite}
+@keyframes photoFloat{0%,100%{translate:0 0}50%{translate:0 -9px}}
+body:not(.sw-run) .hero-portrait-panel::after{animation:panelRing 3.2s ease-in-out infinite}
+@keyframes panelRing{0%,100%{border-color:rgba(255,255,255,.35);box-shadow:none}50%{border-color:rgba(255,255,255,.9);box-shadow:0 0 22px rgba(239,68,68,.55)}}
+body:not(.sw-run) .hero-cutout-wrap:hover .hero-cutout-img{animation:imgGlitch .7s steps(2) 2,imgBreathe 6s ease-in-out infinite}
