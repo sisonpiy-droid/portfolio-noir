@@ -18,7 +18,7 @@ $('#dock').innerHTML = `
     <div class="dock-right"><div class="dock-status"><span class="status-dot"></span><span>Available</span></div><a href="#contact" class="dock-cta">DISPATCH →</a></div>
   </nav>`;
 
-const first = flagships.find((f) => f.title === 'VC Pipeline Intelligence'), rest = flagships.filter((f) => f !== first);   // VC Pipeline leads the flagships
+const first = flagships.find((f) => f.title === 'VC Pipeline Intelligence'), rest = flagships.filter((f) => f !== first && f.title !== 'Muse');   // VC Pipeline leads; Muse lives in the hero only
 const links = (l, cls) => l.map(([t, h], i) => `<a class="${cls(i)}" href="${h}" target="_blank" rel="noopener">${t}</a>`).join('');
 const sub = (f) => `
   <article class="glass-card subgrid-card">
