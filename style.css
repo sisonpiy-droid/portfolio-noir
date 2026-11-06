@@ -311,7 +311,6 @@ body:not(.sw-run) .hero-cutout-img{animation:imgGlitch 8s infinite,imgBreathe 6s
 .glass-card::before{content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;opacity:0;transition:opacity .3s;background:radial-gradient(320px circle at var(--gx,50%) var(--gy,50%),rgba(239,68,68,.14),transparent 60%)}
 .glass-card:hover::before{opacity:1}
 
-/* ---- swarm skeleton: grey bars stand in for text until the swarm is over ---- */
+/* ---- swarm: long text stays hidden (no placeholder bars) until the swarm is over ---- */
 .sw-sk,.sw-sk *{color:transparent!important;text-shadow:none!important}
 .sw-sk::before,.sw-sk::after{visibility:hidden!important}
-.sw-sk{background-image:linear-gradient(to bottom,transparent calc(var(--lh,20px) * .2),#303033 calc(var(--lh,20px) * .2),#303033 calc(var(--lh,20px) * .7),transparent calc(var(--lh,20px) * .7))!important;background-size:100% var(--lh,20px)!important;background-repeat:repeat-y!important}
