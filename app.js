@@ -53,6 +53,8 @@ $('#app').innerHTML = `
   </div>
 </section>
 
+<div class="marquee" aria-hidden="true"><div class="mq-track">${[0, 1].map(() => `<span>${['Next.js', 'TypeScript', 'Postgres', 'Supabase', 'Gemini', 'Claude', 'Playwright', 'Vitest', 'Vercel', 'HubSpot', 'Telegram', 'Node.js'].map((t) => `<b>${t}</b><i>✦</i>`).join('')}</span>`).join('')}</div></div>
+
 <div class="section-divider-bar" aria-hidden="true"><span>// 01.00 SEC_ABOUT</span><span class="divider-line"></span><span>INDEX [01 / 05]</span></div>
 
 <section id="about" class="section">

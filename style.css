@@ -264,7 +264,7 @@ body.sw-run #aurora-canvas{opacity:0}
 .hero-section::after{content:'';position:absolute;inset:0;z-index:1;pointer-events:none;background:radial-gradient(460px circle at var(--mx,50%) var(--my,35%),rgba(239,68,68,.13),transparent 62%)}
 body.sw-run .hero-section::after{opacity:0}
 .hero-center-col{transform:translate(calc(var(--px,0) * 18px),calc(var(--py,0) * 12px));transition:transform .25s ease-out}
-.hero-wordmark-svg{transform:translate(calc(var(--px,0) * -26px),calc(var(--py,0) * -14px));transition:transform .3s ease-out}
+.hero-wordmark-svg{transform:translate(calc(var(--px,0) * -26px),calc(var(--py,0) * -14px + var(--sy,0) * .18px));transition:transform .3s ease-out}
 .hud-stack{transform:translate(calc(var(--px,0) * -10px),calc(var(--py,0) * -6px));transition:transform .3s ease-out}
 body:not(.sw-run) .hero-name{animation:nameGlitch 6.5s infinite}
 @keyframes nameGlitch{0%,91%,100%{transform:none;text-shadow:none}92%{transform:translate(-4px,1px) skewX(-8deg);text-shadow:4px 0 #22d3ee,-4px 0 #000}94%{transform:translate(4px,-1px) skewX(6deg);text-shadow:-4px 0 #22d3ee,4px 0 #000}96%{transform:translate(-2px,0);text-shadow:2px 0 #22d3ee}98%{transform:none;text-shadow:none}}
@@ -308,3 +308,15 @@ body:not(.sw-run) .hero-cutout-img{animation:imgGlitch 8s infinite,imgBreathe 6s
 @keyframes swSay{0%{opacity:0;transform:translateY(6px) scale(.7)}12%{opacity:1;transform:none}80%{opacity:1}100%{opacity:0;transform:translateY(-24px)}}
 .sw-shake{animation:swShake .34s linear}
 @keyframes swShake{0%,100%{transform:translate(0,0)}20%{transform:translate(-7px,3px)}40%{transform:translate(6px,-4px)}60%{transform:translate(-5px,-2px)}80%{transform:translate(4px,4px)}}
+
+/* ---- live page: tech-stack strip ---- */
+.marquee{overflow:hidden;border-block:1px solid var(--border-subtle);padding:14px 0;margin:10px 0 60px;position:relative;z-index:1}
+.mq-track{display:flex;width:max-content;animation:mqx 34s linear infinite}
+.marquee:hover .mq-track{animation-play-state:paused}
+.marquee span{display:flex;align-items:center;gap:28px;padding-right:28px}
+.marquee b{font:700 clamp(15px,1.6vw,20px) var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:#6d6d72;transition:color .2s}
+.marquee b:hover{color:#fff}
+.marquee i{color:var(--accent-red);font-style:normal;font-size:12px}
+@keyframes mqx{to{transform:translateX(-50%)}}
+.btn.mag{transition:transform .12s linear}
+@media(prefers-reduced-motion:reduce){.mq-track{animation:none}}

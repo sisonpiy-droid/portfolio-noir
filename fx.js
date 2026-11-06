@@ -107,7 +107,7 @@ function swarm() {
   }
   layers.sort((a, b) => a.top - b.top || a.depth - b.depth || (a.type === 'rect' ? -1 : 1) - (b.type === 'rect' ? -1 : 1) || a.left - b.left);
   // Only the subjects are built while the swarm runs: boxes, titles and one line on what each thing is. The rest waits for the end.
-  const DEFER = '.hero-actions,.hero-stats-row,.hud-tech-tags,.flagship-meta,.flagship-metrics-row,.flagship-links,.saai-architecture-explorer,.spec-list,.subgrid-footer,.bento-footer,.bento-controls,.bento-link,.exp-sub,.exp-note,.edu-line,.about-text + .about-text,.quote-box,.principle-desc,.email-action-box,.social-links-row,.footer-meta,.about-grid .tech-tags-group';
+  const DEFER = '.marquee,.hero-actions,.hero-stats-row,.hud-tech-tags,.flagship-meta,.flagship-metrics-row,.flagship-links,.saai-architecture-explorer,.spec-list,.subgrid-footer,.bento-footer,.bento-controls,.bento-link,.exp-sub,.exp-note,.edu-line,.about-text + .about-text,.quote-box,.principle-desc,.email-action-box,.social-links-row,.footer-meta,.about-grid .tech-tags-group';
   const deferred = [];
   for (let i = layers.length - 1; i >= 0; i--) if (layers[i].el.closest(DEFER)) deferred.push(layers.splice(i, 1)[0]);
   const total = layers.length;
@@ -274,6 +274,7 @@ function swarm() {
     root.classList.add('off'); $('#app')?.classList.remove('sw-shake');
     if (tour && !instantly) scrollTo({ top: 0, behavior: 'smooth' });
     setTimeout(() => root.remove(), 750);
+    liveFx();
   };
   const cancelTour = () => { lastUser = T; if (tour) { tour = false; btn('tour').classList.remove('on'); btn('tour').textContent = 'Tour'; document.documentElement.style.scrollBehavior = ''; } };
   const onKey = (e) => { if (e.key === 'Escape') golive(true); else if (['ArrowDown', 'ArrowUp', 'PageDown', 'PageUp', ' ', 'Home', 'End'].includes(e.key)) cancelTour(); };
@@ -538,10 +539,55 @@ function heroFx() {
   }, { passive: true });
 }
 
+// ---- the live page: scroll reveals, hover glow and magnetic buttons, count-up numbers, a scroll line and a slow parallax ----
+let liveStarted = false;
+function countUp(el) {
+  const m = el.textContent.match(/^(\D*)(\d+)(.*)$/); if (!m || +m[2] === 0) return;
+  const end = +m[2], t0 = performance.now();
+  const step = (now) => {
+    const p = clamp((now - t0) / 1200, 0, 1);
+    el.textContent = m[1] + Math.round(end * (1 - Math.pow(1 - p, 3))) + m[3];
+    if (p < 1) requestAnimationFrame(step);
+  };
+  el.textContent = m[1] + '0' + m[3]; requestAnimationFrame(step);
+}
+function liveFx() {
+  if (liveStarted || reduced) return; liveStarted = true;
+  const hero = $('#hero'), bar = document.createElement('div'); bar.id = 'progress'; document.body.append(bar);
+  let ticking = false;
+  const onScroll = () => {
+    if (ticking) return; ticking = true;
+    requestAnimationFrame(() => {
+      ticking = false; bar.style.transform = `scaleX(${clamp(scrollY / ((document.documentElement.scrollHeight - innerHeight) || 1), 0, 1)})`;
+      if (hero && scrollY < innerHeight * 1.5) hero.style.setProperty('--sy', scrollY.toFixed(0));
+    });
+  };
+  addEventListener('scroll', onScroll, { passive: true }); onScroll();
+  $$('.hero-stat-box .stat-val').forEach(countUp);
+  if (!matchMedia('(hover:none)').matches) {
+    addEventListener('mousemove', (e) => {
+      const c = e.target.closest?.('.glass-card');
+      if (c) { const r = c.getBoundingClientRect(); c.style.setProperty('--gx', e.clientX - r.left + 'px'); c.style.setProperty('--gy', e.clientY - r.top + 'px'); }
+      const b = e.target.closest?.('.btn');
+      $$('.btn.mag').forEach((x) => { if (x !== b) { x.classList.remove('mag'); x.style.transform = ''; } });
+      if (b) { const r = b.getBoundingClientRect(); b.classList.add('mag'); b.style.transform = `translate(${((e.clientX - r.left - r.width / 2) * .18).toFixed(1)}px,${((e.clientY - r.top - r.height / 2) * .3).toFixed(1)}px)`; }
+    }, { passive: true });
+  }
+  if (!('IntersectionObserver' in window)) return;
+  const items = $$('.section-header,.section-divider-bar,.glass-card,.hud-card').filter((el) => el.getBoundingClientRect().top + scrollY > innerHeight * .9);
+  const io = new IntersectionObserver((es) => es.forEach((e) => {
+    if (!e.isIntersecting) return;
+    const t = e.target; t.classList.add('in'); io.unobserve(t);
+    $$('.metric-num', t).forEach(countUp);
+    setTimeout(() => { t.classList.remove('rv', 'in'); t.style.transitionDelay = ''; }, 1100);
+  }), { threshold: .12, rootMargin: '0px 0px -40px 0px' });
+  items.forEach((el, i) => { el.classList.add('rv'); el.style.transitionDelay = (i % 3) * 90 + 'ms'; io.observe(el); });
+}
+
 export async function initFx() {
   aurora(); heroFx();
   if (reduced) return;
-  if (mode === 'off' || innerWidth < 700) return;
+  if (mode === 'off' || innerWidth < 700) { liveFx(); return; }
   if (new URLSearchParams(location.search).get('intro') !== 'off') await intro();
   swarm();
 }
