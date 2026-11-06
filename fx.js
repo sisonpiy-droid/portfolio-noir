@@ -271,7 +271,7 @@ function swarm() {
     icons.forEach((s) => s.classList.remove('sw-ic'));
     document.body.classList.remove('sw-run'); gridEl?.classList.remove('sw-i');
     document.documentElement.style.scrollBehavior = '';
-    root.classList.add('off');
+    root.classList.add('off'); $('#app')?.classList.remove('sw-shake');
     if (tour && !instantly) scrollTo({ top: 0, behavior: 'smooth' });
     setTimeout(() => root.remove(), 750);
   };
