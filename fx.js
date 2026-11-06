@@ -193,8 +193,8 @@ function swarm() {
   const fsize = () => { fxc.width = innerWidth; fxc.height = innerHeight; }; fsize(); addEventListener('resize', fsize);
   const burst = (x, y, color, n = 18, sp = 280) => { for (let i = 0; i < n && parts.length < 800; i++) { const an = Math.random() * 6.283, v = rand(.3, 1) * sp; parts.push({ x, y, vx: Math.cos(an) * v, vy: Math.sin(an) * v - 40, life: 0, max: rand(.5, 1.1), s: rand(2, 5), c: Math.random() < .3 ? '#fff' : color, g: 420 }); } };
   const ring = (x, y, color, big = 140) => rings.push({ x, y, c: color, r: 4, max: big, life: 0 });
-  const confetti = () => { for (let i = 0; i < 200; i++) parts.push({ x: innerWidth / 2 + rand(-140, 140), y: innerHeight + 10, vx: rand(-620, 620), vy: -rand(600, 1200), life: 0, max: rand(1.4, 2.8), s: rand(5, 10), c: COLORS[(Math.random() * COLORS.length) | 0], g: 900, rect: true, rot: rand(0, 6) }); };
-  const trail = (a) => { for (let k = 0; k < 2; k++) parts.push({ x: a.x + rand(-2, 2), y: a.y + rand(-2, 2), vx: rand(-30, 30), vy: rand(-30, 30), life: 0, max: rand(.25, .55), s: rand(2, 4.5), c: a.color, g: 0 }); };
+  const confetti = () => { for (let i = 0; i < 70; i++) parts.push({ x: innerWidth / 2 + rand(-140, 140), y: innerHeight + 10, vx: rand(-620, 620), vy: -rand(600, 1200), life: 0, max: rand(1.4, 2.8), s: rand(5, 10), c: COLORS[(Math.random() * COLORS.length) | 0], g: 900, rect: true, rot: rand(0, 6) }); };
+  const trail = (a) => { parts.push({ x: a.x + rand(-2, 2), y: a.y + rand(-2, 2), vx: rand(-20, 20), vy: rand(-20, 20), life: 0, max: rand(.2, .4), s: rand(2, 3.5), c: a.color, g: 0 }); };
   const shake = () => { const t = $('#app'); t.classList.remove('sw-shake'); void t.offsetWidth; t.classList.add('sw-shake'); };
   const pop = (el) => { el.classList.remove('sw-pop'); void el.offsetWidth; el.classList.add('sw-pop'); setTimeout(() => el.classList.remove('sw-pop'), 700); };
   const SAY = ['ship it', 'LGTM', '+1', 'nice', 'tests green', 'merging…', 'wow', 'deploy!', 'rebasing', 'ok ok ok', '🔥', 'refactor?', 'on it', 'looks good'];
@@ -308,7 +308,6 @@ function swarm() {
       a.el.style.opacity = 1;
       const L = a.L;
       a.guide = null;
-      if (a.st !== 'idle' && T > a.sayAt) { say(a); a.sayAt = T + rand(2.5, 6); }
       if (a.st === 'idle') {
         const nxt = T > 2.4 && !finishing ? pick() : null;
         if (nxt) beginFly(a, nxt);
@@ -346,8 +345,8 @@ function swarm() {
         if (T - a.t0 >= a.dur) {
           if (L.type === 'rect') styleRect(L); else revealImg(L);
           const rr = rectNow(L); pop(L.el);
-          for (const [x, y] of [[rr.left, rr.top], [rr.right, rr.top], [rr.left, rr.bottom], [rr.right, rr.bottom]]) burst(clamp(x, 6, innerWidth - 6), clamp(y, 6, innerHeight - 6), a.color, 7, 240);
-          ring(a.x, a.y, a.color, 170); if (rr.width * rr.height > 150000) shake();
+          for (const [x, y] of [[rr.left, rr.top], [rr.right, rr.top], [rr.left, rr.bottom], [rr.right, rr.bottom]]) burst(clamp(x, 6, innerWidth - 6), clamp(y, 6, innerHeight - 6), a.color, 3, 160);
+          ring(a.x, a.y, a.color, 120);
           a.ph.classList.add('fade'); const ph = a.ph; setTimeout(() => ph.remove(), 400); a.ph = null;
           a.sel.remove(); a.sel = null; a.t0 = T;
           if (L.units) { a.st = 'type'; a.typed = 0; a.cps = clamp(L.len / 2.6, 38, 90) * rand(.9, 1.1); L.el.classList.remove('sw-t'); }
@@ -361,7 +360,6 @@ function swarm() {
         if (u) { const c = document.createElement('span'); c.className = 'sw-caret'; u.w.insertBefore(c, u.rest); const cr = c.getBoundingClientRect(); a.x = clamp(cr.right + 10, 24, innerWidth - 16); a.y = clamp(cr.bottom + 6, 24, innerHeight - 70); }
         if (a.typed >= L.len) {
           a.sel?.remove(); a.sel = null; a.st = 'settle'; a.t0 = T; a.dur = .2;
-          burst(a.x, a.y, a.color, 10, 190); ring(a.x, a.y, a.color, 80); L.el.classList.add('sw-glitch'); setTimeout(() => L.el.classList.remove('sw-glitch'), 450);
         }
       } else if (a.st === 'settle') {
         if (T - a.t0 >= a.dur) { finish(L); park(a); }
@@ -390,7 +388,7 @@ function swarm() {
     lyEl.innerHTML = `<b>${done}</b> / ${total} layers`;
     drawFx(dt);
     if (done >= total && !finishing && ag.every((a) => a.st === 'idle')) {
-      finishing = true; confetti(); shake(); ring(innerWidth / 2, innerHeight / 2, '#ef4444', 460); ring(innerWidth / 2, innerHeight / 2, '#ffffff', 320);
+      finishing = true; confetti(); ring(innerWidth / 2, innerHeight / 2, '#ef4444', 380);
       btn('live').hidden = false; btn('tour').hidden = true; btn('speed').hidden = true; fill.style.width = '100%';
       setTimeout(() => golive(false), 2600);
     }
