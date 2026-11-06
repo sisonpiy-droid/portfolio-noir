@@ -415,7 +415,7 @@ function intro() {
     const oElastic = (p) => (p <= 0 ? 0 : p >= 1 ? 1 : Math.pow(2, -10 * p) * Math.sin((p * 10 - .75) * (2 * Math.PI) / 3) + 1);
     const inCubic = (p) => p * p * p;
     const hash = (n) => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };   // deterministic noise, so any frame can be drawn on its own
-    const END = 5.2, SKIP_TO = 4.5;
+    const END = 5.2, SKIP_TO = 4.5, SLOW = 1.45;   // SLOW stretches the timeline: about 7.5 seconds of real time
 
     const font = (size, family = 'Bebas Neue', weight = 400) => { ctx.font = `${weight} ${size}px "${family}", Impact, sans-serif`; };
     const text = (s, x, y, size, color, o = {}) => {
@@ -564,14 +564,14 @@ function intro() {
       }
       if (!grid) { grid = document.createElement('canvas'); grid.width = 4; grid.height = 4; const g = grid.getContext('2d'); g.fillStyle = 'rgba(0,0,0,.09)'; g.fillRect(0, 0, 4, 1); }
       if (t < 4.5) { ctx.fillStyle = ctx.createPattern(grid, 'repeat'); ctx.fillRect(0, 0, W, H); }   // faint scanlines
-      if (t < 4.45) { ctx.fillStyle = RED; ctx.fillRect(0, H - 3, W * (t / END), 3); text(`00:0${Math.min(5, Math.floor(t))} / 00:05`, 18, H - 14, 12 * u, GREY, { family: 'JetBrains Mono', weight: 500 }); }
+      if (t < 4.45) { ctx.fillStyle = RED; ctx.fillRect(0, H - 3, W * (t / END), 3); text(`00:0${Math.min(7, Math.floor(t * SLOW))} / 00:07`, 18, H - 14, 12 * u, GREY, { family: 'JetBrains Mono', weight: 500 }); }
     };
 
     let t0 = performance.now(), off = 0, raf, finished = false;
     const end = () => { if (finished) return; finished = true; cancelAnimationFrame(raf); removeEventListener('keydown', skip); root.removeEventListener('click', skip); removeEventListener('resize', size); resolve(); root.classList.add('out'); setTimeout(() => root.remove(), 600); };
-    const skip = () => { const raw = (performance.now() - t0) / 1000 + off; if (raw < SKIP_TO) off += SKIP_TO - raw; };
+    const skip = () => { const raw = (performance.now() - t0) / 1000 / SLOW + off; if (raw < SKIP_TO) off += SKIP_TO - raw; };
     addEventListener('keydown', skip); root.addEventListener('click', skip);
-    const loop = () => { const t = (performance.now() - t0) / 1000 + off; render(Math.min(t, END)); if (t >= END) end(); else raf = requestAnimationFrame(loop); };
+    const loop = () => { const t = (performance.now() - t0) / 1000 / SLOW + off; render(Math.min(t, END)); if (t >= END) end(); else raf = requestAnimationFrame(loop); };
     const fonts = Promise.race([Promise.all([document.fonts.load('400 100px "Bebas Neue"'), document.fonts.load('600 40px Caveat'), document.fonts.load('500 14px "JetBrains Mono"')]), new Promise((r) => setTimeout(r, 1500))]);
     fonts.then(() => { t0 = performance.now(); raf = requestAnimationFrame(loop); });
     window.__introRender = render;
