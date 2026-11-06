@@ -108,15 +108,6 @@ footer{max-width:1160px;margin:90px auto 0;padding:22px 20px 40px;border-top:1px
 #aurora{position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
 main,footer{position:relative;z-index:1}
 body.locked{overflow:hidden}
-.swarm{position:fixed;inset:0;z-index:100;background:var(--bg);cursor:pointer}
-.cur{position:absolute;left:0;top:0;display:flex;align-items:flex-start;gap:2px;will-change:transform;filter:drop-shadow(0 2px 6px rgba(0,0,0,.6))}
-.cur span{font:600 11px 'JetBrains Mono',monospace;color:#000;padding:2px 8px;border-radius:999px;margin-top:14px}
-/* hero builds in once the swarm is done */
-.pre .hero-txt>*,.pre .photo{opacity:0;transform:translateY(26px)}
-.hero-txt>*,.photo{transition:opacity .8s cubic-bezier(.16,1,.3,1),transform .8s cubic-bezier(.16,1,.3,1)}
-.built .hero-txt>*,.built .photo{opacity:1;transform:none}
-.built .hero-txt>:nth-child(2){transition-delay:.08s}.built .hero-txt>:nth-child(3){transition-delay:.16s}.built .hero-txt>:nth-child(4){transition-delay:.24s}.built .hero-txt>:nth-child(5){transition-delay:.32s}.built .hero-txt>:nth-child(6){transition-delay:.4s}.built .hero-txt>:nth-child(7){transition-delay:.48s}.built .photo{transition-delay:.2s}
-.pre .ghost-word{opacity:0}.ghost-word{transition:opacity 1.2s ease}
 .photo .block{animation:blockIn 1s .3s both cubic-bezier(.16,1,.3,1)}
 @keyframes blockIn{from{transform:translate(-30px,30px);opacity:0}}
 /* scroll reveals */
@@ -138,3 +129,29 @@ body.locked{overflow:hidden}
 .toast{position:fixed;bottom:24px;left:50%;transform:translate(-50%,100px);background:#000;border:1px solid var(--red2);padding:10px 20px;border-radius:6px;font-size:13px;font-weight:600;display:flex;gap:8px;align-items:center;box-shadow:0 10px 28px rgba(239,68,68,.35);z-index:200;opacity:0;pointer-events:none;transition:transform .3s cubic-bezier(.16,1,.3,1),opacity .3s}
 .toast.show{transform:translate(-50%,0);opacity:1}
 .toast i{background:var(--red2);color:#000;width:18px;height:18px;border-radius:50%;display:inline-grid;place-items:center;font:900 11px sans-serif}
+
+/* ---- swarm build ---- */
+.sw-h{opacity:0!important}
+.sw-p{outline:1px dashed var(--red2);outline-offset:4px;will-change:clip-path}
+.sw-root{position:fixed;inset:0;z-index:150;pointer-events:none;overflow:hidden}
+.cur{position:absolute;left:0;top:0;display:flex;align-items:flex-start;gap:2px;will-change:transform;transition:opacity .4s;filter:drop-shadow(0 2px 6px rgba(0,0,0,.6))}
+.cur.gone{opacity:0!important}
+.cur span{font:600 11px 'JetBrains Mono',monospace;color:#000;padding:2px 8px;border-radius:999px;margin-top:14px}
+.sw-bar{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);z-index:160;display:flex;align-items:center;gap:12px;background:rgba(10,10,10,.85);backdrop-filter:blur(12px);border:1px solid #333;border-radius:999px;padding:8px 8px 8px 18px;font:500 11px 'JetBrains Mono',monospace;letter-spacing:.06em;transition:opacity .5s,transform .5s;white-space:nowrap}
+.sw-bar.gone{opacity:0;transform:translate(-50%,20px)}
+.sw-track{width:120px;height:3px;background:#2a2a2a;border-radius:3px;overflow:hidden}
+.sw-track i{display:block;height:100%;width:0;background:var(--red2);transition:width .2s}
+.sw-mode{background:var(--red);padding:3px 10px;border-radius:999px;color:#fff}
+.sw-bar button{background:none;border:1px solid #444;color:#ddd;border-radius:999px;padding:4px 12px;font:inherit;cursor:pointer}.sw-bar button:hover{border-color:var(--red2)}
+/* progress, marquee, tilt */
+#progress{position:fixed;top:0;left:0;right:0;height:3px;background:var(--red2);transform:scaleX(0);transform-origin:0 50%;z-index:30}
+.marquee{overflow:hidden;border-block:1px solid var(--line);margin-top:30px;padding:14px 0;position:relative;z-index:1;background:rgba(10,10,10,.6)}
+.marquee .track{display:flex;width:max-content;animation:scrollx 28s linear infinite}
+.marquee span{display:flex;align-items:center;gap:26px;padding-right:26px}
+.marquee b{font:400 clamp(28px,5vw,54px) Anton,sans-serif;text-transform:uppercase;color:transparent;-webkit-text-stroke:1px #555;transition:.2s}
+.marquee b:hover{color:var(--red2);-webkit-text-stroke-color:var(--red2)}
+.marquee i{color:var(--red2);font-style:normal}
+@keyframes scrollx{to{transform:translateX(-50%)}}
+.tilt{transition:transform .08s linear,border-color .2s!important;will-change:transform}
+.btn.mag{transition:transform .12s linear}
+@media(max-width:860px){.sw-track{width:60px}.sw-mode{display:none}}

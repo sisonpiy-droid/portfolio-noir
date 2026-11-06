@@ -51,6 +51,8 @@ $('#app').innerHTML = `
   </div>
 </section>
 
+<div class="marquee" aria-hidden="true"><div class="track">${[0, 1].map(() => `<span>${['Next.js', 'TypeScript', 'Postgres', 'Supabase', 'Gemini', 'Claude', 'Playwright', 'Vitest', 'Vercel', 'HubSpot', 'Telegram'].map((t) => `<b>${t}</b><i>✦</i>`).join('')}</span>`).join('')}</div></div>
+
 <section id="about">
   <div class="sec"><span class="mono crimson">// 01.00 SEC_ABOUT</span><span class="mono dim">INDEX [01 / 04]</span></div>
   <h2>Background &amp; Philosophy</h2>
