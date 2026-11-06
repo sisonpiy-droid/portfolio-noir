@@ -397,55 +397,174 @@ function swarm() {
   requestAnimationFrame(frame);
 }
 
-// ---- opening: glyph rain, a boot console, a glitching MUSE title, a flash, then the swarm ----
-const BOOT = [
-  '> piyush.sys  v2027  [boot]',
-  '> vc-pipeline ........ 486 tests green',
-  '> aangan .............. EN + HI online',
-  '> territory-desk ..... 119 workbooks ok',
-  '> kargo ............... blind scoring on',
-  '> releasing the swarm_',
-];
+// ---- opening: a motion-design showreel (bouncing ball, kinetic type, an easing curve, a name card), then a circle wipe into the swarm ----
 function intro() {
   return new Promise((resolve) => {
     const root = document.createElement('div'); root.className = 'in-root';
-    root.innerHTML = '<canvas class="in-rain"></canvas><pre class="in-term"></pre><div class="in-title"><span data-t="PIYUSH">PIYUSH</span><small>AI ENGINEER · I SHIP END TO END</small></div><div class="in-crt"></div><div class="in-flash"></div><div class="in-skip">press any key or click to skip</div>';
+    root.innerHTML = '<canvas class="in-cv"></canvas><div class="in-skip">click or press any key to skip</div>';
     document.body.append(root);
-    const cv = $('.in-rain', root), ctx = cv.getContext('2d'), term = $('.in-term', root);
-    let w, h, cols, drops, alive = true, raf, finished = false;
-    const size = () => { w = cv.width = innerWidth; h = cv.height = innerHeight; cols = Math.ceil(w / 16); drops = Array.from({ length: cols }, () => rand(-40, 0)); };
-    size();
-    const G = 'アイウエオカキクケコサシスセソ01{}<>/\\#$%';
-    const rain = () => {
-      if (!alive) return;
-      ctx.fillStyle = 'rgba(5,5,5,.16)'; ctx.fillRect(0, 0, w, h); ctx.font = '14px JetBrains Mono, monospace';
-      for (let i = 0; i < cols; i++) {
-        const y = drops[i] * 16;
-        ctx.fillStyle = Math.random() < .04 ? '#fff' : 'rgba(239,68,68,.75)';
-        ctx.fillText(G[(Math.random() * G.length) | 0], i * 16, y);
-        if (y > h && Math.random() > .975) drops[i] = 0;
-        drops[i] += .5 + (i % 5) * .12;
-      }
-      raf = requestAnimationFrame(rain);
+    const cv = $('.in-cv', root), ctx = cv.getContext('2d');
+    const dpr = Math.min(devicePixelRatio || 1, 2);
+    let W, H, u;
+    const size = () => { W = innerWidth; H = innerHeight; cv.width = W * dpr; cv.height = H * dpr; cv.style.width = W + 'px'; cv.style.height = H + 'px'; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); u = Math.min(W / 1000 * 1.1, H / 600); };
+    size(); addEventListener('resize', size);
+
+    const INK = '#141414', BLUE = '#2563eb', RED = '#e11d2e', BG = '#ececec', DARK = '#050505';
+    const c01 = (v) => clamp(v, 0, 1), seg = (t, a, b) => c01((t - a) / (b - a)), lerp = (a, b, p) => a + (b - a) * p;
+    const oBack = (p) => { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(p - 1, 3) + c1 * Math.pow(p - 1, 2); };
+    const oElastic = (p) => (p <= 0 ? 0 : p >= 1 ? 1 : Math.pow(2, -10 * p) * Math.sin((p * 10 - .75) * (2 * Math.PI) / 3) + 1);
+    const inCubic = (p) => p * p * p;
+    const END = 10.4;
+
+    const font = (size, family = 'Bebas Neue', weight = 400) => { ctx.font = `${weight} ${size}px "${family}", Impact, sans-serif`; };
+    const text = (s, x, y, size, color, o = {}) => {
+      ctx.save(); ctx.globalAlpha = o.alpha ?? 1; ctx.translate(x, y); if (o.rot) ctx.rotate(o.rot); ctx.scale(o.sx ?? 1, o.sy ?? 1);
+      font(size, o.family, o.weight); ctx.fillStyle = color; ctx.textAlign = o.align || 'left'; ctx.textBaseline = 'alphabetic'; ctx.fillText(s, 0, 0); ctx.restore();
     };
-    rain();
-    const end = () => {
-      if (finished) return; finished = true; alive = false; cancelAnimationFrame(raf);
-      removeEventListener('keydown', end); root.removeEventListener('click', end);
-      root.classList.add('flash');
-      setTimeout(() => { resolve(); root.classList.add('out'); setTimeout(() => root.remove(), 700); }, 240);
+    const hand = (s, x, y, size, color, p, rot = 0) => {   // handwritten note, revealed left to right
+      if (p <= 0) return;
+      ctx.save(); ctx.translate(x, y); ctx.rotate(rot); font(size, 'Caveat', 600); const w = ctx.measureText(s).width;
+      ctx.beginPath(); ctx.rect(-6, -size, (w + 12) * p, size * 1.5); ctx.clip(); ctx.fillStyle = color; ctx.textBaseline = 'alphabetic'; ctx.fillText(s, 0, 0); ctx.restore();
     };
-    addEventListener('keydown', end); root.addEventListener('click', end);
-    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-    (async () => {
-      for (const l of BOOT) {
-        for (const ch of l) { if (finished) return; term.textContent += ch; await sleep(11); }
-        term.textContent += '\n'; await sleep(70);
+    const polyline = (pts, p, color, lw, dash) => {
+      const n = Math.max(1, Math.floor((pts.length - 1) * p)); ctx.save(); ctx.strokeStyle = color; ctx.lineWidth = lw; ctx.lineCap = 'round'; if (dash) ctx.setLineDash(dash);
+      ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]);
+      for (let i = 1; i <= n; i++) ctx.lineTo(pts[i][0], pts[i][1]);
+      if (p < 1) { const f = (pts.length - 1) * p - n; if (f > 0 && pts[n + 1]) ctx.lineTo(lerp(pts[n][0], pts[n + 1][0], f), lerp(pts[n][1], pts[n + 1][1], f)); }
+      ctx.stroke(); ctx.restore();
+    };
+    const arrow = (x1, y1, x2, y2, bend, p, color) => {   // a hand-drawn curved arrow
+      if (p <= 0) return;
+      const mx = (x1 + x2) / 2 + bend, my = (y1 + y2) / 2 - bend, pts = [];
+      for (let i = 0; i <= 24; i++) { const s = i / 24; pts.push([(1 - s) * (1 - s) * x1 + 2 * (1 - s) * s * mx + s * s * x2, (1 - s) * (1 - s) * y1 + 2 * (1 - s) * s * my + s * s * y2]); }
+      polyline(pts, p, color, 2.4 * u);
+      if (p > .92) { const a = Math.atan2(y2 - pts[22][1], x2 - pts[22][0]); ctx.save(); ctx.translate(x2, y2); ctx.rotate(a); ctx.strokeStyle = color; ctx.lineWidth = 2.4 * u; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(-10 * u, -7 * u); ctx.lineTo(0, 0); ctx.lineTo(-10 * u, 7 * u); ctx.stroke(); ctx.restore(); }
+    };
+    const squiggle = (x, y, w, p, color) => { const pts = []; for (let i = 0; i <= 40; i++) pts.push([x + (w * i) / 40, y + Math.sin(i * .9) * 4 * u]); polyline(pts, p, color, 2.4 * u); };
+    const letters = (s, size, fn) => {   // draw a word letter by letter, centred; fn(i, n, w) returns offsets for each letter
+      font(size); const ws = [...s].map((ch) => ctx.measureText(ch).width), tw = ws.reduce((a, b) => a + b, 0); let x = (W - tw) / 2;
+      [...s].forEach((ch, i) => { fn(ch, i, x, ws[i], tw); x += ws[i]; });
+      return tw;
+    };
+
+    // ---- scene 1: the ball ----
+    const G = () => H * .74, R = () => 26 * u;
+    const ballAt = (t) => {
+      const r = R(), g = G(); let y;
+      if (t < .6) { const p = t / .6; y = lerp(-2 * r, g - r, p * p); }
+      else { y = g - r; for (const [a, b, h] of [[.6, 1.2, .36], [1.2, 1.62, .17], [1.62, 1.9, .06]]) if (t >= a && t < b) { const p = (t - a) / (b - a); y = g - r - H * h * 4 * p * (1 - p); } }
+      return { x: W * .2 + W * .6 * c01(t / 2.2), y };
+    };
+    const scene1 = (t) => {
+      const g = G(), r = R();
+      polyline([[W * .1, g], [W * .9, g]], easeOut(seg(t, 0, .5)), INK, 1.6 * u);
+      for (let k = 10; k >= 1; k--) { const tt = t - k * .05; if (tt > 0) { const b = ballAt(tt); ctx.save(); ctx.globalAlpha = .3 * (1 - k / 11); ctx.strokeStyle = INK; ctx.lineWidth = 1.3 * u; ctx.beginPath(); ctx.arc(b.x, b.y, r, 0, 7); ctx.stroke(); ctx.restore(); } }
+      const b = ballAt(t), vy = (ballAt(t + .012).y - ballAt(t - .012).y) / .024;
+      let sy = 1 + c01(Math.abs(vy) / (H * 5)) * .35, sx = 1 / Math.sqrt(sy);
+      for (const [ti, k] of [[.6, .38], [1.2, .3], [1.62, .2], [1.9, .12]]) { const q = (t - ti) / .12; if (q >= 0 && q < 1) { const s = Math.sin(Math.PI * q) * k; sy = 1 - s; sx = 1 + s * .9; } }
+      ctx.save(); ctx.translate(b.x, b.y + r * (1 - sy)); ctx.scale(sx, sy); ctx.fillStyle = BLUE; ctx.beginPath(); ctx.arc(0, 0, r, 0, 7); ctx.fill(); ctx.restore();
+      hand('slow in, slow out', W * .27, H * .22, 38 * u, BLUE, seg(t, .75, 1.2), -.07);
+      hand('squash!', W * .55, g + 78 * u, 40 * u, RED, seg(t, 1.3, 1.65), -.04);
+      arrow(W * .575, g + 50 * u, ballAt(1.2).x + 6 * u, g + 8 * u, -22 * u, easeOut(seg(t, 1.3, 1.75)), RED);
+      return ballAt(2.2);
+    };
+
+    // ---- scene 2: kinetic type ----
+    const scene2 = (t) => {
+      const words = [['BUILD.', 0, .6], ['TEST.', .6, 1.2], ['SHIP.', 1.2, 1.8]];
+      for (const [w, a, b] of words) {
+        if (t < a || t >= b + .01) continue;
+        const lt = t - a; font(100); const size = Math.min(H * .52, (W * .84) / ctx.measureText(w).width * 100), baseY = H * .66;
+        if (w === 'BUILD.') letters(w, size, (ch, i, x) => { const d = i * .05; for (let k = 4; k >= 0; k--) { const p = oBack(seg(lt - k * .014, d, d + .28)); text(ch, x, baseY - (1 - p) * H * .85, size, INK, { alpha: k ? .11 : 1 }); } });
+        else if (w === 'TEST.') letters(w, size, (ch, i, x) => { const d = i * .04, p = easeOut(seg(lt, d, d + .3)); for (let k = 5; k >= 0; k--) text(ch, x + (1 - p) * W * .8 + k * (1 - p) * 26 * u, baseY, size, INK, { alpha: k ? .1 : 1 }); });
+        else {
+          const p = oBack(seg(lt, 0, .2)), s = 1 + .7 * (1 - c01(p)), jx = lt < .22 ? (Math.random() - .5) * 8 * u : 0;
+          font(size); const tw = ctx.measureText(w).width, cx = W / 2 + jx, cy = baseY - size * .34;
+          ctx.save(); ctx.translate(cx, cy); ctx.scale(s, s); text(w, 0, size * .34, size, RED, { align: 'center' }); ctx.restore();
+          if (lt > .12) {   // snap guides
+            const gp = seg(lt, .12, .35); ctx.save(); ctx.strokeStyle = RED; ctx.globalAlpha = .7; ctx.lineWidth = 1.2 * u; ctx.setLineDash([6 * u, 5 * u]);
+            ctx.beginPath(); ctx.moveTo(0, cy); ctx.lineTo(W * gp, cy); ctx.moveTo(W / 2, 0); ctx.lineTo(W / 2, H * gp); ctx.stroke(); ctx.setLineDash([]);
+            const bx = W / 2 - tw / 2, by = baseY - size * .72, bw = tw, bh = size * .72; ctx.strokeRect(bx, by, bw, bh);
+            for (const [x, y] of [[bx, by], [bx + bw, by], [bx, by + bh], [bx + bw, by + bh]]) ctx.fillRect(x - 4 * u, y - 4 * u, 8 * u, 8 * u);
+            ctx.restore(); text(`x: ${Math.round(W / 2)}   y: ${Math.round(cy)}`, bx, by - 10 * u, 14 * u, RED, { family: 'JetBrains Mono', weight: 500 });
+          }
+        }
       }
-      await sleep(250); if (finished) return;
-      root.classList.add('title'); await sleep(1100); if (finished) return;
-      root.classList.add('shake'); await sleep(450); end();
-    })();
+    };
+
+    // ---- scene 3: the easing curve ----
+    const scene3 = (t) => {
+      const x0 = W * .18, x1 = W * .82, y0 = H * .78, y1 = H * .22, dx = x1 - x0;
+      polyline([[x0, y1 - 30 * u], [x0, y0], [x1 + 20 * u, y0]], easeOut(seg(t, 0, .35)), INK, 1.6 * u);
+      text('quality', x0 - 14 * u, y1 - 40 * u, 15 * u, '#777', { family: 'JetBrains Mono', weight: 500, alpha: seg(t, .2, .5) });
+      text('time', x1 + 24 * u, y0 + 22 * u, 15 * u, '#777', { family: 'JetBrains Mono', weight: 500, alpha: seg(t, .2, .5), align: 'right' });
+      polyline([[x0, y0], [x1, y1]], easeOut(seg(t, .2, .7)), BLUE, 2 * u, [8 * u, 7 * u]);
+      hand('linear = robotic', x0 + dx * .56, y0 - (y0 - y1) * .3 + 70 * u, 36 * u, RED, seg(t, .6, 1), -.05);
+      const bez = (s) => { const m = 1 - s; return [m * m * m * x0 + 3 * m * m * s * (x0 + dx * .5) + 3 * m * s * s * (x1 - dx * .5) + s * s * s * x1, m * m * m * y0 + 3 * m * m * s * y0 + 3 * m * s * s * y1 + s * s * s * y1]; };
+      const pts = []; for (let i = 0; i <= 60; i++) pts.push(bez(i / 60));
+      polyline(pts, ease(seg(t, .7, 1.4)), BLUE, 4 * u);
+      for (const [x, y] of [[x0, y0], [x1, y1]]) { ctx.fillStyle = RED; ctx.globalAlpha = seg(t, .7, 1); ctx.beginPath(); ctx.arc(x, y, 7 * u, 0, 7); ctx.fill(); ctx.globalAlpha = 1; }
+      hand('ease in-out ✓', x0 + dx * .08, y1 + 60 * u, 40 * u, BLUE, seg(t, 1.25, 1.65), -.04);
+      const q = seg(t, 1.4, 1.9); if (q > 0) { const [x, y] = bez(ease(q)); ctx.fillStyle = BLUE; ctx.beginPath(); ctx.arc(x, y, 11 * u, 0, 7); ctx.fill(); }
+    };
+
+    // ---- scene 4: the work ----
+    const ROWS = [['VC PIPELINE', '486 TESTS'], ['AANGAN', 'EN + HI VOICE'], ['TERRITORY DESK', '119 WORKBOOKS'], ['KARGO', 'BLIND SCORING'], ['LOYALTAP', '60+ USERS']];
+    const scene4 = (t) => {
+      const rh = H * .14, top = H * .14, fs = rh * .78, x = W * .12;
+      ROWS.forEach(([name, tag], i) => {
+        const d = .08 + i * .2, p = easeOut(seg(t, d, d + .3)), y = top + i * rh + rh;
+        polyline([[x, y + 8 * u], [W - x, y + 8 * u]], easeOut(seg(t, d, d + .35)), '#bbb', 1.2 * u);
+        ctx.save(); ctx.beginPath(); ctx.rect(0, y - rh, W, rh + 10 * u); ctx.clip();
+        text(name, x + 34 * u, y + (1 - p) * rh, fs, INK);
+        text(tag, W - x, y - fs * .2 + (1 - p) * rh, 17 * u, i === 0 ? BLUE : '#666', { family: 'JetBrains Mono', weight: 500, align: 'right' });
+        ctx.fillStyle = BLUE; ctx.beginPath(); ctx.arc(x + 10 * u, y - fs * .36 + (1 - p) * rh, 8 * u * p, 0, 7); ctx.fill();
+        ctx.restore();
+      });
+    };
+
+    // ---- scene 5: the name card ----
+    let dot = { x: W / 2, y: H / 2, r: 0 };
+    const scene5 = (t) => {
+      const sz = Math.min(H * .3, (W * .8) / 3.6), y1 = H * .46, y2 = y1 + sz * .96; font(sz); let endX = 0;
+      letters('PIYUSH', sz, (ch, i, x) => { const p = oBack(seg(t, i * .045, i * .045 + .3)); text(ch, x, y1 + (1 - p) * H * .5, sz, INK, { alpha: c01(p * 2) }); });
+      letters('SISONDIA', sz, (ch, i, x, w, tw) => { const p = oBack(seg(t, .3 + i * .04, .3 + i * .04 + .3)); text(ch, x, y2 + (1 - p) * H * .5, sz, INK, { alpha: c01(p * 2) }); endX = x + w; });
+      const dr = 20 * u * oElastic(seg(t, .95, 1.45)); dot = { x: endX + 20 * u, y: y2 - dr * .1, r: dr };
+      ctx.fillStyle = BLUE; ctx.beginPath(); ctx.arc(dot.x, y2 - 8 * u - 0, dr, 0, 7); ctx.fill(); dot.y = y2 - 8 * u;
+      text('AI ENGINEER · I SHIP END TO END', W / 2, y2 + 44 * u, 17 * u, '#555', { family: 'JetBrains Mono', weight: 500, align: 'center', alpha: seg(t, .6, 1) });
+      const nx = dot.x - 360 * u, ny = y2 + 108 * u;
+      hand('open to new projects', nx, ny, 38 * u, BLUE, seg(t, 1.05, 1.5), -.04);
+      arrow(nx + 270 * u, ny - 16 * u, dot.x - 8 * u, y2 + 8 * u, 40 * u, easeOut(seg(t, 1.1, 1.5)), BLUE);
+      squiggle(nx, ny + 14 * u, 262 * u, seg(t, 1.45, 1.85), BLUE);
+    };
+
+    // ---- the frame ----
+    const bar = (t, tb) => {   // a black bar sweeps across at each cut
+      const p = seg(t, tb - .11, tb + .11); if (p <= 0 || p >= 1) return;
+      const a = p < .5 ? 0 : (p - .5) * 2 * W, b = p < .5 ? p * 2 * W : W; ctx.fillStyle = INK; ctx.fillRect(a, 0, b - a, H);
+    };
+    const render = (t) => {
+      ctx.fillStyle = BG; ctx.fillRect(0, 0, W, H);
+      const gr = ctx.createRadialGradient(W / 2, H / 2, H * .2, W / 2, H / 2, H * 1.1); gr.addColorStop(0, 'rgba(255,255,255,.55)'); gr.addColorStop(1, 'rgba(0,0,0,.07)'); ctx.fillStyle = gr; ctx.fillRect(0, 0, W, H);
+      if (t < 2.2) scene1(t); else if (t < 4) scene2(t - 2.2); else if (t < 5.9) scene3(t - 4); else if (t < 7.7) scene4(t - 5.9); else scene5(t - 7.7);
+      for (const tb of [2.2, 4, 5.9, 7.7]) bar(t, tb);
+      if (t >= 9.55) {   // the blue dot swallows the screen, then dark takes over
+        const diag = Math.hypot(W, H) * 1.05;
+        ctx.fillStyle = BLUE; ctx.beginPath(); ctx.arc(dot.x, dot.y, dot.r + diag * inCubic(seg(t, 9.55, 10.05)), 0, 7); ctx.fill();
+        ctx.fillStyle = DARK; ctx.beginPath(); ctx.arc(dot.x, dot.y, diag * easeOut(seg(t, 9.85, 10.4)), 0, 7); ctx.fill();
+      }
+      ctx.fillStyle = t >= 9.55 ? 'transparent' : INK; ctx.fillRect(0, H - 3, W * (t / END), 3);                      // the player's scrub bar
+      text(`00:${String(Math.min(10, Math.floor(t))).padStart(2, '0')} / 00:10`, 18, H - 14, 12 * u, '#888', { family: 'JetBrains Mono', weight: 500, alpha: t < 9.5 ? 1 : 0 });
+    };
+
+    let t0 = performance.now(), off = 0, raf, finished = false;
+    const end = () => { if (finished) return; finished = true; cancelAnimationFrame(raf); removeEventListener('keydown', skip); root.removeEventListener('click', skip); removeEventListener('resize', size); resolve(); root.classList.add('out'); setTimeout(() => root.remove(), 600); };
+    const skip = () => { const raw = (performance.now() - t0) / 1000 + off; if (raw < 9.6) off += 9.6 - raw; };
+    addEventListener('keydown', skip); root.addEventListener('click', skip);
+    const loop = () => { const t = (performance.now() - t0) / 1000 + off; render(Math.min(t, END)); if (t >= END) end(); else raf = requestAnimationFrame(loop); };
+    const fonts = Promise.race([Promise.all([document.fonts.load('400 100px "Bebas Neue"'), document.fonts.load('600 40px Caveat'), document.fonts.load('500 14px "JetBrains Mono"')]), new Promise((r) => setTimeout(r, 1500))]);
+    fonts.then(() => { t0 = performance.now(); raf = requestAnimationFrame(loop); });
+    window.__introRender = render;
   });
 }
 
