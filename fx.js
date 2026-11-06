@@ -417,7 +417,7 @@ function intro() {
     const hash = (n) => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };   // deterministic noise, so any frame can be drawn on its own
     const END = 3.1, SKIP_TO = 2.4, SLOW = 1.35;   // SLOW stretches the timeline: about 4.2 seconds of real time
 
-    const font = (size, family = 'Archivo Black', weight = 400) => { ctx.font = `${weight} ${size}px "${family}", Impact, sans-serif`; };
+    const font = (size, family = 'Unbounded', weight = 800) => { ctx.font = `${weight} ${size}px "${family}", Impact, sans-serif`; };
     const text = (s, x, y, size, color, o = {}) => {
       ctx.save(); ctx.globalAlpha = o.alpha ?? 1; ctx.translate(x, y); if (o.rot) ctx.rotate(o.rot); ctx.scale(o.sx ?? 1, o.sy ?? 1);
       font(size, o.family, o.weight); ctx.fillStyle = color; ctx.textAlign = o.align || 'left'; ctx.textBaseline = 'alphabetic'; ctx.fillText(s, 0, 0); ctx.restore();
@@ -453,43 +453,46 @@ function intro() {
       ctx.restore();
     };
 
-    // ---- scene 1: hard-hitting words (0 – 1.2) ----
-    const WORDS = [['NO DEMOS.', 0, .4, 'drop'], ['NO FLUFF.', .4, .8, 'break'], ['REAL PRODUCTS.', .8, 1.2, 'slam']];   // the word, its time slot, its effect
+    // ---- scene 1: hard-hitting words (0 – 1.2): decode, wave, zoom ----
+    const WORDS = [['NO DEMOS.', 0, .4, 'scramble'], ['NO FLUFF.', .4, .8, 'wave'], ['REAL PRODUCTS.', .8, 1.2, 'zoom']];   // the word, its time slot, its effect
+    const GLYPHS = 'ABCDEFGHJKLMNPQRSTUVWXYZ0123456789#%&@';
     const scene2 = (t) => {
       for (const [w, a, b, fx] of WORDS) {
         if (t < a || t >= b + .005) continue;
-        const lt = t - a; font(100); const size = Math.min(H * .52, (W * .84) / ctx.measureText(w).width * 100), baseY = H * .66;
-        if (fx === 'drop') letters(w, size, (ch, i, x) => { const d = i * .022; for (let k = 4; k >= 0; k--) { const p = oBack(seg(lt - k * .01, d, d + .17)); text(ch, x, baseY - (1 - p) * H * .85, size, INK, { alpha: k ? .12 : 1 }); } });
-        else if (fx === 'break') {   // shatters into slices that slide back together
-          font(size); const tw = ctx.measureText(w).width, x0 = (W - tw) / 2, p = easeOut(seg(lt, .02, .3)), bands = 8;
-          for (let i = 0; i < bands; i++) {
-            const y0 = baseY - size * .8 + (size * .8 * i) / bands, hh = (size * .85) / bands + 1, dx = (hash(i * 3.1) - .5) * W * .45 * (1 - p);
-            ctx.save(); ctx.beginPath(); ctx.rect(0, y0, W, hh); ctx.clip(); text(w, x0 + dx, baseY, size, i % 3 === 0 ? RED : INK); ctx.restore();
-          }
-        } else {
-          const p = oBack(seg(lt, 0, .16)), s = 1 + .7 * (1 - c01(p)), jx = lt < .18 ? (hash(Math.floor(lt * 80)) - .5) * 10 * u : 0;
-          font(size); const tw = ctx.measureText(w).width, cx = W / 2 + jx, cy = baseY - size * .34;
-          ctx.save(); ctx.translate(cx, cy); ctx.scale(s, s); text(w, 0, size * .34, size, RED, { align: 'center' }); ctx.restore();
-          if (lt > .1) {
-            const gp = seg(lt, .1, .3); ctx.save(); ctx.strokeStyle = INK; ctx.globalAlpha = .6; ctx.lineWidth = 1.2 * u; ctx.setLineDash([6 * u, 5 * u]);
-            ctx.beginPath(); ctx.moveTo(0, cy); ctx.lineTo(W * gp, cy); ctx.moveTo(W / 2, 0); ctx.lineTo(W / 2, H * gp); ctx.stroke(); ctx.setLineDash([]);
-            const bx = W / 2 - tw / 2, by = baseY - size * .72, bw = tw, bh = size * .72; ctx.strokeRect(bx, by, bw, bh);
-            for (const [x, y] of [[bx, by], [bx + bw, by], [bx, by + bh], [bx + bw, by + bh]]) ctx.fillRect(x - 4 * u, y - 4 * u, 8 * u, 8 * u);
-            ctx.restore(); text(`x: ${Math.round(W / 2)}   y: ${Math.round(cy)}`, bx, by - 10 * u, 14 * u, INK, { family: 'JetBrains Mono', weight: 500, alpha: .8 });
-          }
+        const lt = t - a; font(100); const size = Math.min(H * .46, (W * .86) / ctx.measureText(w).width * 100), baseY = H * .64;
+        if (fx === 'scramble') {   // random glyphs lock into the word from left to right
+          const tw = letters(w, size, (ch, i, x) => {
+            if (ch === ' ' || ch === '.') { if (lt > i * .02) text(ch, x, baseY, size, INK); return; }
+            const lock = .05 + i * .026;
+            if (lt < lock) text(GLYPHS[Math.floor(hash(Math.floor(lt * 45) * 13 + i * 7) * GLYPHS.length)], x, baseY, size, RED, { alpha: .9 });
+            else text(ch, x, baseY, size, INK);
+          });
+          const sx = (W - tw) / 2 + tw * seg(lt, 0, .3); ctx.fillStyle = RED; ctx.fillRect(sx, baseY - size * .8, 3 * u, size * .9);
+        } else if (fx === 'wave') {   // letters rise in a wave, then an underline draws
+          const tw = letters(w, size, (ch, i, x) => {
+            const d = i * .03, p = oBack(seg(lt, d, d + .2)), wob = Math.sin(lt * 20 + i * .8) * size * .05 * (1 - seg(lt, .25, .4));
+            ctx.save(); ctx.translate(x, baseY + (1 - p) * size * .9 + wob); ctx.globalAlpha = c01(p * 2); ctx.scale(.7 + .3 * c01(p), .7 + .3 * c01(p)); text(ch, 0, 0, size, INK); ctx.restore();
+          });
+          ctx.fillStyle = RED; ctx.fillRect((W - tw) / 2, baseY + size * .16, tw * easeOut(seg(lt, .12, .34)), 6 * u);
+        } else {   // zooms in from far away, red, with a blur trail and two rules
+          const p = easeOut(seg(lt, 0, .24)), s0 = 1 + 2.4 * (1 - p);
+          for (let k = 4; k >= 1; k--) { const sk = s0 * (1 + .07 * k * (1 - p)); ctx.save(); ctx.translate(W / 2, baseY - size * .3); ctx.scale(sk, sk); text(w, 0, size * .3, size, RED, { align: 'center', alpha: .1 * (1 - p) }); ctx.restore(); }
+          ctx.save(); ctx.translate(W / 2, baseY - size * .3); ctx.scale(s0, s0); text(w, 0, size * .3, size, RED, { align: 'center', alpha: c01(p * 3) }); ctx.restore();
+          const rp = easeOut(seg(lt, .16, .36)); ctx.fillStyle = INK; ctx.fillRect(W / 2 - W * .38 * rp, baseY + size * .2, W * .76 * rp, 3 * u);
         }
       }
     };
 
-    // ---- scene 2: the name card (1.2 – 3.1) ----
+    // ---- scene 2: the name card (1.2 – 3.1): lines rise out of masks ----
     let dot = { x: W / 2, y: H / 2, r: 0 };
     const scene4 = (t) => {
-      font(100); const sz = Math.min(H * .27, (W * .8) / (ctx.measureText('SISONDIA').width / 100)), y1 = H * .46, y2 = y1 + sz * .96; let endX = 0;
-      letters('PIYUSH', sz, (ch, i, x) => { const p = oBack(seg(t, i * .03, i * .03 + .2)); text(ch, x, y1 + (1 - p) * H * .5, sz, INK, { alpha: c01(p * 2) }); });
-      letters('SISONDIA', sz, (ch, i, x, w) => { const p = oBack(seg(t, .15 + i * .028, .15 + i * .028 + .2)); text(ch, x, y2 + (1 - p) * H * .5, sz, INK, { alpha: c01(p * 2) }); endX = x + w; });
-      const dr = 20 * u * oElastic(seg(t, .5, .9)); dot = { x: endX + 20 * u, y: y2 - 8 * u, r: dr };
+      font(100); const sz = Math.min(H * .25, (W * .8) / (ctx.measureText('SISONDIA').width / 100)), y1 = H * .44, y2 = y1 + sz * 1.02;
+      const line = (str, y, d) => { font(sz); const tw = ctx.measureText(str).width, x0 = (W - tw) / 2, p = easeOut(seg(t, d, d + .35)); ctx.save(); ctx.beginPath(); ctx.rect(0, y - sz * .95, W, sz * 1.15); ctx.clip(); text(str, x0, y + (1 - p) * sz * 1.1, sz, INK); ctx.restore(); return [x0, tw]; };
+      line('PIYUSH', y1, 0); const [x2, tw2] = line('SISONDIA', y2, .12);
+      ctx.fillStyle = RED; ctx.fillRect(x2, y2 + sz * .14, tw2 * easeOut(seg(t, .4, .75)), 6 * u);
+      const dr = 20 * u * oElastic(seg(t, .55, .95)); dot = { x: x2 + tw2 + 22 * u, y: y2 - 8 * u, r: dr };
       ctx.fillStyle = RED; ctx.beginPath(); ctx.arc(dot.x, dot.y, dr, 0, 7); ctx.fill();
-      text('AI ENGINEER · I SHIP END TO END', W / 2, y2 + 44 * u, 17 * u, GREY, { family: 'JetBrains Mono', weight: 500, align: 'center', alpha: seg(t, .35, .6) });
+      text('AI ENGINEER · I SHIP END TO END', W / 2, y2 + sz * .14 + 52 * u, 17 * u, GREY, { family: 'JetBrains Mono', weight: 500, align: 'center', alpha: seg(t, .45, .7) });
     };
 
     // ---- the frame ----
@@ -519,7 +522,7 @@ function intro() {
     const skip = () => { const raw = (performance.now() - t0) / 1000 / SLOW + off; if (raw < SKIP_TO) off += SKIP_TO - raw; };
     addEventListener('keydown', skip); root.addEventListener('click', skip);
     const loop = () => { const t = (performance.now() - t0) / 1000 / SLOW + off; render(Math.min(t, END)); if (t >= END) end(); else raf = requestAnimationFrame(loop); };
-    const fonts = Promise.race([Promise.all([document.fonts.load('400 100px "Archivo Black"'), document.fonts.load('600 40px Caveat'), document.fonts.load('500 14px "JetBrains Mono"')]), new Promise((r) => setTimeout(r, 1500))]);
+    const fonts = Promise.race([Promise.all([document.fonts.load('800 100px "Unbounded"'), document.fonts.load('600 40px Caveat'), document.fonts.load('500 14px "JetBrains Mono"')]), new Promise((r) => setTimeout(r, 1500))]);
     fonts.then(() => { t0 = performance.now(); raf = requestAnimationFrame(loop); });
     window.__introRender = render;
   });
