@@ -170,7 +170,7 @@ function swarm() {
   root.innerHTML = `<div class="sw-shield"></div><div class="sw-ruler sw-rt"></div><div class="sw-ruler sw-rl"></div><canvas class="sw-fx"></canvas><div class="sw-intro">PS</div>
     <div class="sw-hud"><span class="sw-dots">${COLORS.slice(0, 4).map((c) => `<i style="background:${c}"></i>`).join('')}</span>
     <span class="sw-status"><span id="sw-ag"><b>${N}</b> agents</span><span id="sw-ly"><b>0</b> / ${total} layers</span><span class="sw-bar"><i></i></span></span>
-    <span class="sw-hint">press any key to skip</span><button data-a="tour" class="on">Touring</button><button data-a="speed">2×</button><button data-a="live" class="pri" hidden>Go live</button><button data-a="x" class="x" title="Exit (Esc)">✕</button></div>`;
+    <span class="sw-hint">press any key to skip</span><button data-a="tour" class="on">Touring</button><button data-a="speed">2×</button><button data-a="live" class="pri" hidden>Go live</button><button data-a="replay" hidden>Replay</button><button data-a="x" class="x" title="Exit (Esc)">✕</button></div>`;
   document.body.append(root);
   const hud = $('.sw-hud', root), lyEl = $('#sw-ly', root), fill = $('.sw-bar i', root), intro = $('.sw-intro', root);
   const btn = (a) => $(`[data-a="${a}"]`, root);
@@ -261,7 +261,8 @@ function swarm() {
   };
   const place = (node, r, w, h) => { node.style.transform = `translate(${r.left}px,${r.top}px)`; node.style.width = w + 'px'; node.style.height = h + 'px'; };
 
-  const golive = (instantly) => {
+  const golive = (instantly, replaying) => {
+    stopFlock();
     if (over) return; over = true;
     removeEventListener('keydown', onKey); removeEventListener('wheel', cancelTour); removeEventListener('touchstart', cancelTour); removeEventListener('scroll', onScroll);
     for (const a of ag) { a.ph?.remove(); a.sel?.remove(); if (a.L && !a.L.done && a.L.units) { restoreText(a.L); a.L.done = true; } }
@@ -274,11 +275,10 @@ function swarm() {
     root.classList.add('off'); $('#app')?.classList.remove('sw-shake');
     if (tour && !instantly) scrollTo({ top: 0, behavior: 'smooth' });
     setTimeout(() => root.remove(), 750);
-    startFlock(ag.map((a) => ({ x: a.x, y: a.y, color: a.color })));
-    liveFx();
+    if (!replaying) liveFx();
   };
   const cancelTour = () => { lastUser = T; if (tour) { tour = false; btn('tour').classList.remove('on'); btn('tour').textContent = 'Tour'; document.documentElement.style.scrollBehavior = ''; } };
-  const onKey = (e) => { if (['Shift', 'Control', 'Alt', 'Meta', 'CapsLock', 'Tab'].includes(e.key)) return; golive(true); };   // any key skips
+  const onKey = (e) => { if (['Shift', 'Control', 'Alt', 'Meta', 'CapsLock', 'Tab'].includes(e.key)) return; if (finishing && e.key !== 'Escape') return; golive(true); };   // any key skips the build; once it is done only Esc exits
   const onScroll = () => { if (Math.abs(scrollY - autoY) > 3) cancelTour(); };
   addEventListener('keydown', onKey); addEventListener('wheel', cancelTour, { passive: true }); addEventListener('touchstart', cancelTour, { passive: true }); addEventListener('scroll', onScroll, { passive: true });
   document.documentElement.style.scrollBehavior = 'auto';
@@ -286,6 +286,7 @@ function swarm() {
     const a = e.target.closest('button')?.dataset.a; if (!a) return;
     if (a === 'x') golive(true);
     else if (a === 'live') golive(false);
+    else if (a === 'replay') { golive(true, true); setTimeout(swarm, 800); }
     else if (a === 'speed') { speed = SPEEDS[(SPEEDS.indexOf(speed) + 1) % SPEEDS.length]; btn('speed').textContent = speed + '×'; }
     else if (a === 'tour') { tour = !tour; manualOff = !tour; autoY = scrollY; btn('tour').classList.toggle('on', tour); btn('tour').textContent = tour ? 'Touring' : 'Tour'; document.documentElement.style.scrollBehavior = tour ? 'auto' : ''; }
   });
@@ -391,8 +392,8 @@ function swarm() {
     drawFx(dt);
     if (done >= total && !finishing && ag.every((a) => a.st === 'idle')) {
       finishing = true; startFlock(ag.map((a) => ({ x: a.x, y: a.y, color: a.color }))); confetti(); ring(innerWidth / 2, innerHeight / 2, '#ef4444', 380);
-      btn('live').hidden = false; btn('tour').hidden = true; btn('speed').hidden = true; fill.style.width = '100%';
-      setTimeout(() => golive(false), 2600);
+      btn('live').hidden = false; btn('replay').hidden = false; btn('tour').hidden = true; btn('speed').hidden = true; $('.sw-hint', root).hidden = true; fill.style.width = '100%';
+      $('.sw-shield', root).style.pointerEvents = 'none';      // the built page can be scrolled and used while the flock orbits; nothing exits until you click Go live
     }
     requestAnimationFrame(frame);
   };
@@ -541,7 +542,8 @@ function heroFx() {
 }
 
 // ---- the flock: once the build is done a cloud of cursors orbits your pointer in a slow swirl and bounces off it (like saai.pro) ----
-let flockStarted = false;
+let flockStarted = false, flockStop = null;
+const stopFlock = () => { flockStop?.(); flockStop = null; flockStarted = false; };
 function startFlock(seed) {
   if (flockStarted || reduced || matchMedia('(hover:none)').matches) return;
   flockStarted = true;
@@ -558,9 +560,12 @@ function startFlock(seed) {
   const cs = seed.map((s) => make(s.x, s.y, s.color));
   let mouse = null, lastT = null, time = 0, spawnCd = 0, last = performance.now();
   const tv = { x: 0, y: 0 };
-  addEventListener('pointermove', (e) => { mouse = { x: e.clientX, y: e.clientY }; }, { passive: true });
-  document.documentElement.addEventListener('pointerleave', () => { mouse = null; });
+  let alive = true;
+  const onMove = (e) => { mouse = { x: e.clientX, y: e.clientY }; }, onLeave = () => { mouse = null; };
+  addEventListener('pointermove', onMove, { passive: true }); document.documentElement.addEventListener('pointerleave', onLeave);
+  flockStop = () => { alive = false; removeEventListener('pointermove', onMove); document.documentElement.removeEventListener('pointerleave', onLeave); root.remove(); };
   const loop = (now) => {
+    if (!alive) return;
     requestAnimationFrame(loop);
     const dt = clamp((now - last) / 1000, .001, .05); last = now;
     if (document.hidden) return;
@@ -650,7 +655,7 @@ function liveFx() {
 export async function initFx() {
   aurora(); heroFx();
   if (reduced) return;
-  if (mode === 'off' || innerWidth < 700) { liveFx(); if (innerWidth >= 700) startFlock(Array.from({ length: 9 }, (_, i) => ({ x: i % 2 ? innerWidth + 30 : -30, y: rand(100, innerHeight - 100), color: COLORS[i] }))); return; }
+  if (mode === 'off' || innerWidth < 700) { liveFx(); return; }
   if (new URLSearchParams(location.search).get('intro') !== 'off') await intro();
   swarm();
 }
