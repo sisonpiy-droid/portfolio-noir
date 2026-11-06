@@ -170,7 +170,7 @@ function swarm() {
   root.innerHTML = `<div class="sw-shield"></div><div class="sw-ruler sw-rt"></div><div class="sw-ruler sw-rl"></div><canvas class="sw-fx"></canvas><div class="sw-intro">PS</div>
     <div class="sw-hud"><span class="sw-dots">${COLORS.slice(0, 4).map((c) => `<i style="background:${c}"></i>`).join('')}</span>
     <span class="sw-status"><span id="sw-ag"><b>${N}</b> agents</span><span id="sw-ly"><b>0</b> / ${total} layers</span><span class="sw-bar"><i></i></span></span>
-    <span class="sw-hint">press any key to skip</span><button data-a="tour" class="on">Touring</button><button data-a="speed">2×</button><button data-a="live" class="pri" hidden>Go live</button><button data-a="replay" hidden>Replay</button><button data-a="x" class="x" title="Exit (Esc)">✕</button></div>`;
+    <span class="sw-hint">press any key to skip</span><button data-a="tour" class="on">Touring</button><button data-a="speed">2×</button><button data-a="live" class="pri" hidden>Go live</button><button data-a="replay" hidden>Replay</button><button data-a="x" class="x" title="Skip to the finished page (Esc exits)">✕</button></div>`;
   document.body.append(root);
   const hud = $('.sw-hud', root), lyEl = $('#sw-ly', root), fill = $('.sw-bar i', root), intro = $('.sw-intro', root);
   const btn = (a) => $(`[data-a="${a}"]`, root);
@@ -278,13 +278,21 @@ function swarm() {
     if (!replaying) liveFx();
   };
   const cancelTour = () => { lastUser = T; if (tour) { tour = false; btn('tour').classList.remove('on'); btn('tour').textContent = 'Tour'; document.documentElement.style.scrollBehavior = ''; } };
-  const onKey = (e) => { if (['Shift', 'Control', 'Alt', 'Meta', 'CapsLock', 'Tab'].includes(e.key)) return; if (finishing && e.key !== 'Escape') return; golive(true); };   // any key skips the build; once it is done only Esc exits
+  // Skipping fast-forwards the build to the finished state (Go live / Replay, flock orbiting) instead of making the swarm disappear.
+  const finishNow = () => {
+    if (finishing || over) return;
+    for (const a of ag) { a.ph?.remove(); a.sel?.remove(); a.ph = a.sel = null; a.st = 'idle'; a.L = null; a.wt = 0; }
+    layers.forEach((L) => { L.by = null; instant(L); });
+    cancelTour(); tour = false;
+    scrollTo({ top: 0, behavior: 'smooth' });
+  };
+  const onKey = (e) => { if (['Shift', 'Control', 'Alt', 'Meta', 'CapsLock', 'Tab'].includes(e.key)) return; if (e.key === 'Escape') golive(true); else if (!finishing) finishNow(); };   // Esc exits; any other key fast-forwards the build to the finished state
   const onScroll = () => { if (Math.abs(scrollY - autoY) > 3) cancelTour(); };
   addEventListener('keydown', onKey); addEventListener('wheel', cancelTour, { passive: true }); addEventListener('touchstart', cancelTour, { passive: true }); addEventListener('scroll', onScroll, { passive: true });
   document.documentElement.style.scrollBehavior = 'auto';
   hud.addEventListener('click', (e) => {
     const a = e.target.closest('button')?.dataset.a; if (!a) return;
-    if (a === 'x') golive(true);
+    if (a === 'x') { if (finishing) golive(true); else finishNow(); }
     else if (a === 'live') golive(false);
     else if (a === 'replay') { golive(true, true); setTimeout(swarm, 800); }
     else if (a === 'speed') { speed = SPEEDS[(SPEEDS.indexOf(speed) + 1) % SPEEDS.length]; btn('speed').textContent = speed + '×'; }
