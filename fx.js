@@ -525,8 +525,11 @@ function intro() {
     const skip = () => { const raw = (performance.now() - t0) / 1000 / SLOW + off; if (raw < SKIP_TO) off += SKIP_TO - raw; };
     addEventListener('keydown', skip); root.addEventListener('click', skip);
     const loop = () => { const t = (performance.now() - t0) / 1000 / SLOW + off; render(Math.min(t, END)); if (t >= END) end(); else raf = requestAnimationFrame(loop); };
-    const fonts = Promise.race([Promise.all([document.fonts.load('400 100px "Dela Gothic One"'), document.fonts.load('600 40px Caveat'), document.fonts.load('500 14px "JetBrains Mono"')]), new Promise((r) => setTimeout(r, 1500))]);
+    // A font that fails to download must never stop the intro: ignore errors, give up waiting after 1.5s, and force the end if it ever stalls.
+    const safe = (p) => Promise.resolve(p).catch(() => {});
+    const fonts = Promise.race([Promise.all([safe(document.fonts.load('400 100px "Dela Gothic One"')), safe(document.fonts.load('600 40px Caveat')), safe(document.fonts.load('500 14px "JetBrains Mono"'))]), new Promise((r) => setTimeout(r, 1500))]);
     fonts.then(() => { t0 = performance.now(); raf = requestAnimationFrame(loop); });
+    setTimeout(end, (END * SLOW + 4) * 1000);   // watchdog
     window.__introRender = render;
   });
 }
@@ -656,6 +659,11 @@ export async function initFx() {
   aurora(); heroFx();
   if (reduced) return;
   if (mode === 'off' || innerWidth < 700) { liveFx(); return; }
-  if (new URLSearchParams(location.search).get('intro') !== 'off') await intro();
-  swarm();
+  try {
+    if (new URLSearchParams(location.search).get('intro') !== 'off') await intro();
+    swarm();
+  } catch (e) {   // never leave a visitor on a blank page: fall back to the plain site
+    console.error('intro/swarm failed, showing the plain site', e);
+    if (mode !== 'off') location.replace(location.pathname + '?swarm=off');
+  }
 }
