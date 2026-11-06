@@ -162,6 +162,7 @@ function swarm() {
   });
 
   let T = 0, last = performance.now(), done = 0, tour = true, speed = 2, over = false, finishing = false;
+  let autoY = 0, lastUser = -99, manualOff = false;   // autoY: where our own scrolling left the page; a different position means the visitor scrolled
   const setShape = (a, s) => { if (a.shape !== s) { a.shape = s; a.el.innerHTML = s === 'cross' ? CROSS(a.color) : ARROW(a.color); } };
   const rectNow = (L) => L.el.getBoundingClientRect();
   const finish = (L) => {
@@ -188,13 +189,14 @@ function swarm() {
   const reach = (L) => topNow(L) < innerHeight - 8;
   const eligible = (L) => !L.done && !L.by && (!L.dep || L.dep.done);
   const pick = () => {
+    let edge = null;   // a block that starts above the screen is only taken when nothing in view is left
     for (const L of layers) {
       if (!eligible(L)) continue;
       const t = topNow(L);
       if (t + L.h < -60) { instant(L); continue; }
-      if (t < innerHeight - 8) return L;
+      if (t < innerHeight - 8) { if (t >= -20) return L; if (!edge) edge = L; }
     }
-    return null;
+    return edge;
   };
   const makePh = (L, a) => {
     const d = document.createElement('div'); d.className = 'sw-ph' + (L.type === 'rect' && !L.fill ? ' line' : '');
@@ -210,7 +212,7 @@ function swarm() {
 
   const golive = (instantly) => {
     if (over) return; over = true;
-    removeEventListener('keydown', onKey); removeEventListener('wheel', cancelTour); removeEventListener('touchstart', cancelTour);
+    removeEventListener('keydown', onKey); removeEventListener('wheel', cancelTour); removeEventListener('touchstart', cancelTour); removeEventListener('scroll', onScroll);
     for (const a of ag) { a.ph?.remove(); a.sel?.remove(); if (a.L && !a.L.done && a.L.units) { restoreText(a.L); a.L.done = true; } }
     layers.forEach(instant);
     icons.forEach((s) => s.classList.remove('sw-ic'));
@@ -220,16 +222,17 @@ function swarm() {
     if (tour && !instantly) scrollTo({ top: 0, behavior: 'smooth' });
     setTimeout(() => root.remove(), 750);
   };
-  const cancelTour = () => { if (tour) { tour = false; btn('tour').classList.remove('on'); btn('tour').textContent = 'Tour'; document.documentElement.style.scrollBehavior = ''; } };
+  const cancelTour = () => { lastUser = T; if (tour) { tour = false; btn('tour').classList.remove('on'); btn('tour').textContent = 'Tour'; document.documentElement.style.scrollBehavior = ''; } };
   const onKey = (e) => { if (e.key === 'Escape') golive(true); else if (['ArrowDown', 'ArrowUp', 'PageDown', 'PageUp', ' ', 'Home', 'End'].includes(e.key)) cancelTour(); };
-  addEventListener('keydown', onKey); addEventListener('wheel', cancelTour, { passive: true }); addEventListener('touchstart', cancelTour, { passive: true });
+  const onScroll = () => { if (Math.abs(scrollY - autoY) > 3) cancelTour(); };
+  addEventListener('keydown', onKey); addEventListener('wheel', cancelTour, { passive: true }); addEventListener('touchstart', cancelTour, { passive: true }); addEventListener('scroll', onScroll, { passive: true });
   document.documentElement.style.scrollBehavior = 'auto';
   hud.addEventListener('click', (e) => {
     const a = e.target.closest('button')?.dataset.a; if (!a) return;
     if (a === 'x') golive(true);
     else if (a === 'live') golive(false);
     else if (a === 'speed') { speed = SPEEDS[(SPEEDS.indexOf(speed) + 1) % SPEEDS.length]; btn('speed').textContent = speed + '×'; }
-    else if (a === 'tour') { tour = !tour; btn('tour').classList.toggle('on', tour); btn('tour').textContent = tour ? 'Touring' : 'Tour'; document.documentElement.style.scrollBehavior = tour ? 'auto' : ''; }
+    else if (a === 'tour') { tour = !tour; manualOff = !tour; autoY = scrollY; btn('tour').classList.toggle('on', tour); btn('tour').textContent = tour ? 'Touring' : 'Tour'; document.documentElement.style.scrollBehavior = tour ? 'auto' : ''; }
   });
 
   const beginFly = (a, L) => {
@@ -302,17 +305,19 @@ function swarm() {
       a.el.style.transform = `translate(${a.x}px,${a.y}px)`;
     }
 
-    // tour: scroll on once everything in view is claimed, but never past the top of a block that is still being built
-    if (tour && T > 2.4) {
-      const inReach = layers.some((l) => eligible(l) && reach(l));
-      if (!inReach) {
-        let limit = Infinity;
-        for (const l of layers) if (!l.done && !l.fixed && l.top < scrollY + innerHeight - 8) limit = Math.min(limit, l.top - 90);
-        const nxt = layers.find((l) => !l.done && !l.by);
-        if (nxt) {
-          const gap = Math.min(nxt.top - innerHeight * .45, limit) - scrollY;
-          if (gap > 0) scrollTo(0, scrollY + clamp(gap * 2, 90, 420) * dt);
-        }
+    // tour: scroll on once everything in view is claimed, but never past the top of a block that is still being built.
+    // If the visitor scrolled instead, the cursors build wherever they are; if they stop for a few seconds the tour carries on.
+    const inReach = layers.some((l) => eligible(l) && reach(l));
+    if (!tour && !manualOff && !finishing && T > 2.4 && !inReach && T - lastUser > 4) {
+      tour = true; btn('tour').classList.add('on'); btn('tour').textContent = 'Touring'; document.documentElement.style.scrollBehavior = 'auto'; autoY = scrollY;
+    }
+    if (tour && T > 2.4 && !inReach) {
+      let limit = Infinity;
+      for (const l of layers) if (!l.done && !l.fixed && l.top < scrollY + innerHeight - 8) limit = Math.min(limit, l.top - 90);
+      const nxt = layers.find((l) => !l.done && !l.by);
+      if (nxt) {
+        const gap = Math.min(nxt.top - innerHeight * .45, limit) - scrollY;
+        if (gap > 0) { scrollTo(0, scrollY + clamp(gap * 2, 90, 420) * dt); autoY = scrollY; }
       }
     }
     const pct = done / total;
