@@ -107,6 +107,10 @@ function swarm() {
   }
   layers.sort((a, b) => a.top - b.top || a.depth - b.depth || (a.type === 'rect' ? -1 : 1) - (b.type === 'rect' ? -1 : 1) || a.left - b.left);
   const total = layers.length;
+  for (const L of layers) {   // only the subjects (short text) get built; anything longer is a skeleton until the swarm ends
+    const tl = L.nodes ? L.nodes.reduce((n, x) => n + x.data.trim().length, 0) : 0;
+    L.long = tl >= 37;
+  }
 
   // small svg icons (button arrows, link icons) show once their owner is built
   const icons = $$('svg', roots[1]).filter((s) => !s.closest('.hero-wordmark-svg')).concat($$('svg', roots[0]));
@@ -120,7 +124,8 @@ function swarm() {
   for (const L of layers) {
     if (L.type === 'rect') L.el.classList.add('sw-r');
     else if (L.type === 'img') L.el.classList.add('sw-i');
-    if (L.nodes) {
+    if (L.nodes && L.long) { L.el.style.setProperty('--lh', L.lh + 'px'); L.el.classList.add('sw-sk'); }
+    else if (L.nodes) {
       L.el.classList.add('sw-t');
       L.units = L.nodes.map((n) => {
         const w = document.createElement('span'); w.className = 'sw-w';
@@ -148,7 +153,7 @@ function swarm() {
   root.innerHTML = `<div class="sw-shield"></div><div class="sw-ruler sw-rt"></div><div class="sw-ruler sw-rl"></div><div class="sw-intro">PS</div>
     <div class="sw-hud"><span class="sw-dots">${COLORS.slice(0, 4).map((c) => `<i style="background:${c}"></i>`).join('')}</span>
     <span class="sw-status"><span id="sw-ag"><b>${N}</b> agents</span><span id="sw-ly"><b>0</b> / ${total} layers</span><span class="sw-bar"><i></i></span></span>
-    <button data-a="tour" class="on">Touring</button><button data-a="speed">4×</button><button data-a="live" class="pri" hidden>Go live</button><button data-a="x" class="x" title="Exit (Esc)">✕</button></div>`;
+    <button data-a="tour" class="on">Touring</button><button data-a="speed">2×</button><button data-a="live" class="pri" hidden>Go live</button><button data-a="x" class="x" title="Exit (Esc)">✕</button></div>`;
   document.body.append(root);
   const hud = $('.sw-hud', root), lyEl = $('#sw-ly', root), fill = $('.sw-bar i', root), intro = $('.sw-intro', root);
   const btn = (a) => $(`[data-a="${a}"]`, root);
@@ -161,7 +166,7 @@ function swarm() {
     return { el, color, shape: 'arrow', x: left ? -40 : innerWidth + 40, y: rand(120, innerHeight - 120), st: 'idle', wake: .3 + i * .22, speed: rand(480, 1000), L: null, t0: 0, dur: 0, fx: 0, fy: 0, bend: 0, wx: innerWidth / 2, wy: innerHeight / 2, wt: 0, ph: null, sel: null, typed: 0 };
   });
 
-  let T = 0, last = performance.now(), done = 0, tour = true, speed = 4, over = false, finishing = false;
+  let T = 0, last = performance.now(), done = 0, tour = true, speed = 2, over = false, finishing = false;
   let autoY = 0, lastUser = -99, manualOff = false;   // autoY: where our own scrolling left the page; a different position means the visitor scrolled
   const setShape = (a, s) => { if (a.shape !== s) { a.shape = s; a.el.innerHTML = s === 'cross' ? CROSS(a.color) : ARROW(a.color); } };
   const rectNow = (L) => L.el.getBoundingClientRect();
@@ -215,13 +220,13 @@ function swarm() {
     removeEventListener('keydown', onKey); removeEventListener('wheel', cancelTour); removeEventListener('touchstart', cancelTour); removeEventListener('scroll', onScroll);
     for (const a of ag) { a.ph?.remove(); a.sel?.remove(); if (a.L && !a.L.done && a.L.units) { restoreText(a.L); a.L.done = true; } }
     layers.forEach(instant);
+    for (const L of layers) if (L.long) { L.el.classList.remove('sw-sk'); L.el.style.removeProperty('--lh'); L.el.classList.add('sw-in'); setTimeout(() => L.el.classList.remove('sw-in'), 600); }
     icons.forEach((s) => s.classList.remove('sw-ic'));
     document.body.classList.remove('sw-run'); gridEl?.classList.remove('sw-i');
     document.documentElement.style.scrollBehavior = '';
     root.classList.add('off');
     if (tour && !instantly) scrollTo({ top: 0, behavior: 'smooth' });
     setTimeout(() => root.remove(), 750);
-    liveFx();
   };
   const cancelTour = () => { lastUser = T; if (tour) { tour = false; btn('tour').classList.remove('on'); btn('tour').textContent = 'Tour'; document.documentElement.style.scrollBehavior = ''; } };
   const onKey = (e) => { if (e.key === 'Escape') golive(true); else if (['ArrowDown', 'ArrowUp', 'PageDown', 'PageUp', ' ', 'Home', 'End'].includes(e.key)) cancelTour(); };
@@ -279,7 +284,9 @@ function swarm() {
         a.x = clamp(r.left + w, 24, innerWidth - 16); a.y = clamp(r.top + h, 24, innerHeight - 70);
         if (p >= 1) {
           if (a.st === 'frame') {
-            const fr = rectNow(L); place(a.sel, fr, fr.width, fr.height); a.sel.classList.add('thin'); setShape(a, 'arrow');
+            const fr = rectNow(L); place(a.sel, fr, fr.width, fr.height); setShape(a, 'arrow');
+            if (L.long) { a.sel.remove(); a.sel = null; a.st = 'settle'; a.t0 = T; a.dur = .12; continue; }
+            a.sel.classList.add('thin');
             L.el.classList.remove('sw-t'); a.st = 'type'; a.t0 = T; a.typed = 0;
             a.cps = clamp(L.len / 2.6, 38, 90) * rand(.9, 1.1);    // chars per second, a long paragraph never takes more than ~3s
           } else { setShape(a, 'arrow'); a.st = 'hold'; a.t0 = T; a.dur = rand(.12, .2); }
@@ -395,54 +402,10 @@ function heroFx() {
   }, { passive: true });
 }
 
-// ---- the live page: scroll reveals, decoding titles, count-ups, a mouse glow on cards, a scroll bar ----
-let liveStarted = false;
-function scramble(el) {
-  if (el.children.length) return;
-  const txt = el.textContent, G = '█▓▒░<>/\\#01{}', t0 = performance.now();
-  const step = (now) => {
-    const p = clamp((now - t0) / 700, 0, 1), keep = Math.floor(txt.length * p);
-    el.textContent = txt.split('').map((c, i) => (i < keep || c === ' ' ? c : G[(Math.random() * G.length) | 0])).join('');
-    if (p < 1) requestAnimationFrame(step); else el.textContent = txt;
-  };
-  requestAnimationFrame(step);
-}
-function countUp(el) {
-  const m = el.textContent.match(/^(\D*)(\d+)(.*)$/); if (!m) return;
-  const end = +m[2], t0 = performance.now();
-  const step = (now) => {
-    const p = clamp((now - t0) / 1200, 0, 1);
-    el.textContent = m[1] + Math.round(end * (1 - Math.pow(1 - p, 3))) + m[3];
-    if (p < 1) requestAnimationFrame(step);
-  };
-  requestAnimationFrame(step);
-}
-function liveFx() {
-  if (liveStarted || reduced) return; liveStarted = true;
-  const bar = document.createElement('div'); bar.id = 'progress'; document.body.append(bar);
-  const onScroll = () => { bar.style.transform = `scaleX(${clamp(scrollY / ((document.documentElement.scrollHeight - innerHeight) || 1), 0, 1)})`; };
-  addEventListener('scroll', onScroll, { passive: true }); onScroll();
-  $$('.hero-stat-box .stat-val').forEach(countUp);
-  addEventListener('mousemove', (e) => {
-    const c = e.target.closest?.('.glass-card'); if (!c) return;
-    const r = c.getBoundingClientRect(); c.style.setProperty('--gx', e.clientX - r.left + 'px'); c.style.setProperty('--gy', e.clientY - r.top + 'px');
-  }, { passive: true });
-  if (!('IntersectionObserver' in window)) return;
-  const items = $$('.section-header,.section-divider-bar,.glass-card,.hud-card').filter((el) => el.getBoundingClientRect().top + scrollY > innerHeight * .9);
-  const io = new IntersectionObserver((es) => es.forEach((e) => {
-    if (!e.isIntersecting) return;
-    const t = e.target; t.classList.add('in'); io.unobserve(t);
-    $$('.section-title,.contact-title,.flagship-title', t).forEach(scramble);
-    $$('.metric-num', t).forEach(countUp);
-    setTimeout(() => { t.classList.remove('rv', 'in'); t.style.transitionDelay = ''; }, 1100);
-  }), { threshold: .12, rootMargin: '0px 0px -40px 0px' });
-  items.forEach((el, i) => { el.classList.add('rv'); el.style.transitionDelay = (i % 3) * 90 + 'ms'; io.observe(el); });
-}
-
 export async function initFx() {
   aurora(); heroFx();
   if (reduced) return;
-  if (mode === 'off' || innerWidth < 700) { liveFx(); return; }
+  if (mode === 'off' || innerWidth < 700) return;
   if (new URLSearchParams(location.search).get('intro') !== 'off') await intro();
   swarm();
 }
