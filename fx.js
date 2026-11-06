@@ -454,13 +454,13 @@ function intro() {
     };
 
     // ---- scene 1: hard-hitting words (0 – 1.2) ----
-    const WORDS = [['BUILD.', 0, .4], ['BREAK.', .4, .8], ['SHIP.', .8, 1.2]];
+    const WORDS = [['NO DEMOS.', 0, .4, 'drop'], ['NO FLUFF.', .4, .8, 'break'], ['REAL PRODUCTS.', .8, 1.2, 'slam']];   // the word, its time slot, its effect
     const scene2 = (t) => {
-      for (const [w, a, b] of WORDS) {
+      for (const [w, a, b, fx] of WORDS) {
         if (t < a || t >= b + .005) continue;
         const lt = t - a; font(100); const size = Math.min(H * .52, (W * .84) / ctx.measureText(w).width * 100), baseY = H * .66;
-        if (w === 'BUILD.') letters(w, size, (ch, i, x) => { const d = i * .022; for (let k = 4; k >= 0; k--) { const p = oBack(seg(lt - k * .01, d, d + .17)); text(ch, x, baseY - (1 - p) * H * .85, size, INK, { alpha: k ? .12 : 1 }); } });
-        else if (w === 'BREAK.') {   // shatters into slices that slide back together
+        if (fx === 'drop') letters(w, size, (ch, i, x) => { const d = i * .022; for (let k = 4; k >= 0; k--) { const p = oBack(seg(lt - k * .01, d, d + .17)); text(ch, x, baseY - (1 - p) * H * .85, size, INK, { alpha: k ? .12 : 1 }); } });
+        else if (fx === 'break') {   // shatters into slices that slide back together
           font(size); const tw = ctx.measureText(w).width, x0 = (W - tw) / 2, p = easeOut(seg(lt, .02, .3)), bands = 8;
           for (let i = 0; i < bands; i++) {
             const y0 = baseY - size * .8 + (size * .8 * i) / bands, hh = (size * .85) / bands + 1, dx = (hash(i * 3.1) - .5) * W * .45 * (1 - p);
