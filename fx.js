@@ -261,16 +261,21 @@ function swarm() {
   };
   const place = (node, r, w, h) => { node.style.transform = `translate(${r.left}px,${r.top}px)`; node.style.width = w + 'px'; node.style.height = h + 'px'; };
 
+  let revealed = false;
+  const revealAll = () => {   // full text, every hidden part, icons, background: the real page
+    if (revealed) return; revealed = true;
+    for (const L of layers) if (L.cap && L.units) { restoreText(L); L.el.classList.add('sw-in'); setTimeout(() => L.el.classList.remove('sw-in'), 600); }
+    for (const L of deferred) { L.el.classList.remove('sw-x'); L.el.classList.add('sw-in'); setTimeout(() => L.el.classList.remove('sw-in'), 600); }
+    icons.forEach((s) => s.classList.remove('sw-ic'));
+    document.body.classList.remove('sw-run'); gridEl?.classList.remove('sw-i');
+  };
   const golive = (instantly, replaying) => {
     stopFlock();
     if (over) return; over = true;
     removeEventListener('keydown', onKey); removeEventListener('wheel', cancelTour); removeEventListener('touchstart', cancelTour); removeEventListener('scroll', onScroll);
     for (const a of ag) { a.ph?.remove(); a.sel?.remove(); if (a.L && !a.L.done && a.L.units) { restoreText(a.L); a.L.done = true; } }
     layers.forEach(instant);
-    for (const L of layers) if (L.cap && L.units) { restoreText(L); L.el.classList.add('sw-in'); setTimeout(() => L.el.classList.remove('sw-in'), 600); }
-    for (const L of deferred) { L.el.classList.remove('sw-x'); L.el.classList.add('sw-in'); setTimeout(() => L.el.classList.remove('sw-in'), 600); }
-    icons.forEach((s) => s.classList.remove('sw-ic'));
-    document.body.classList.remove('sw-run'); gridEl?.classList.remove('sw-i');
+    revealAll();
     document.documentElement.style.scrollBehavior = '';
     root.classList.add('off'); $('#app')?.classList.remove('sw-shake');
     if (tour && !instantly) scrollTo({ top: 0, behavior: 'smooth' });
@@ -399,7 +404,7 @@ function swarm() {
     lyEl.innerHTML = `<b>${done}</b> / ${total} layers`;
     drawFx(dt);
     if (done >= total && !finishing && ag.every((a) => a.st === 'idle')) {
-      finishing = true; startFlock(ag.map((a) => ({ x: a.x, y: a.y, color: a.color }))); confetti(); ring(innerWidth / 2, innerHeight / 2, '#ef4444', 380);
+      finishing = true; revealAll(); startFlock(ag.map((a) => ({ x: a.x, y: a.y, color: a.color }))); confetti(); ring(innerWidth / 2, innerHeight / 2, '#ef4444', 380);
       btn('live').hidden = false; btn('replay').hidden = false; btn('tour').hidden = true; btn('speed').hidden = true; $('.sw-hint', root).hidden = true; fill.style.width = '100%';
       $('.sw-shield', root).style.pointerEvents = 'none';      // the built page can be scrolled and used while the flock orbits; nothing exits until you click Go live
     }
@@ -560,7 +565,7 @@ function startFlock(seed) {
   flockStarted = true;
   if (new URLSearchParams(location.search).get('flock') === 'off') return;
   const root = document.createElement('div'); root.className = 'fl-root'; document.body.append(root);
-  const MAXN = 36;
+  const MAXN = 14;
   const make = (x, y, color) => {
     const el = document.createElement('div'); el.className = 'fl-a';
     el.innerHTML = `<svg width="22" height="22" viewBox="0 0 24 24" style="overflow:visible"><path d="M5 3l14 7.5-6 1.8-2.2 6.2z" fill="${color}" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/></svg>`;
