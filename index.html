@@ -1,25 +1,27 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Piyush Sisondia — AI Engineer</title>
-<meta name="description" content="Piyush Sisondia builds AI products end to end: voice agents, investor intelligence, blind CV screening. Next.js, TypeScript, Supabase, Gemini.">
+<meta name="description" content="AI engineer building AI products end to end: voice agents, investor intelligence, blind CV screening. Next.js, TypeScript, Supabase, Gemini.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Piyush Sisondia">
 <meta property="og:title" content="Piyush Sisondia — AI Engineer">
 <meta property="og:description" content="I build AI products end to end, from the rules that keep them honest to the deploy.">
 <meta property="og:image" content="og.jpg">
-<link rel="icon" href="icon.svg" type="image/svg+xml">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" type="image/svg+xml" href="icon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Caveat:wght@600&family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<canvas id="aurora" aria-hidden="true"></canvas>
-<div id="progress" aria-hidden="true"></div>
-<nav class="nav" id="nav"></nav>
-<div class="toast" id="toast" role="status"><i>✓</i><span id="toast-msg"></span></div>
+<canvas id="aurora-canvas" aria-hidden="true"></canvas>
+<header class="dock-container" id="dock"></header>
 <main id="app"></main>
+<div id="toast" class="toast-notification" aria-live="polite"><span class="toast-icon">✓</span><span class="toast-text" id="toast-message"></span></div>
 <noscript><p style="padding:2rem">Piyush Sisondia, AI Engineer. <a href="https://piyushsisondia.cv">CV</a> · sisonpiy@gmail.com</p></noscript>
 <script type="module" src="app.js"></script>
 </body>

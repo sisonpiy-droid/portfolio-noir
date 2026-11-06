@@ -44,12 +44,26 @@ export const about = {
 };
 
 export const scoreParts = [
-  { k: 'Recency', v: 30, d: 'How recent the verified signal is. Stale and undated items are rejected before they are scored.' },
-  { k: 'Relevance', v: 30, d: 'How closely the signal matches the founder’s round. Gemini classifies it, with schema-validated output.' },
-  { k: 'Evidence', v: 20, d: 'Every quoted excerpt must appear verbatim on the fetched page, and the investor must be named.' },
-  { k: 'Fit', v: 15, d: 'How well the investor fits the founder’s stage and sector.' },
-  { k: 'Relationship', v: 5, d: 'Existing contact history, which the refresh role can never read or overwrite.' },
+  { k: 'Recency', v: 30, t: 'Verified in the last 30 days', d: 'How recent the verified signal is. Stale and undated items are rejected before they are scored.', tags: ['30-Day Window', 'Undated Items Rejected'] },
+  { k: 'Relevance', v: 30, t: 'Does the signal match the round?', d: 'How closely the signal matches the founder’s round. Gemini classifies it, with schema-validated output.', tags: ['Gemini Classifier', 'Schema-Validated'] },
+  { k: 'Evidence', v: 20, t: 'Quoted, not paraphrased', d: 'Every quoted excerpt must appear verbatim on the fetched page, and the investor must be named.', tags: ['Verbatim Excerpts', 'Investor Named'] },
+  { k: 'Fit', v: 15, t: 'Stage and sector fit', d: 'How well the investor fits the founder’s stage and sector.', tags: ['Stage Fit', 'Sector Fit'] },
+  { k: 'Relationship', v: 5, t: 'Founder notes stay private', d: 'Existing contact history, which the refresh role can never read or overwrite.', tags: ['DB Role Isolation', 'Tested'] },
 ];
+
+export const hud = [
+  { tag: 'FUNDRAISING', title: 'VC Pipeline Intelligence', desc: 'Verified investor signals ranked 0–100. 486 tests, 82 of 82 refreshed.' },
+  { tag: 'VOICE AI', title: 'Aangan AI Front Desk', desc: 'Answers every call in English and Hindi. The model reads, rules decide.' },
+  { tag: 'OPERATIONS', title: 'Territory Desk', desc: 'Franchise decisions that held across 119 random workbooks.' },
+];
+export const hudTags = ['Next.js', 'TypeScript', 'Supabase', 'Gemini', 'Postgres', 'Vercel'];
+export const cardTags = {
+  'Aangan AI Front Desk': ['Voice AI', 'HubSpot'],
+  'Territory Desk': ['Rules Engine', 'OpenStreetMap'],
+  'Kargo Hiring Dashboard': ['Next.js', 'Gemini'],
+  'Muse': ['Next.js', 'Prisma'],
+  'LoyalTap': ['n8n', 'Unit Economics'],
+};
 
 // Flagships first (order matters), then the matrix.
 export const flagships = [
