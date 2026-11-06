@@ -167,7 +167,7 @@ function swarm() {
   // ---------- 3. overlay, HUD, agents ----------
   const root = document.createElement('div'); root.className = 'sw-root';
   const N = 9;
-  root.innerHTML = `<div class="sw-shield"></div><div class="sw-ruler sw-rt"></div><div class="sw-ruler sw-rl"></div><div class="sw-intro">PS</div>
+  root.innerHTML = `<div class="sw-shield"></div><div class="sw-ruler sw-rt"></div><div class="sw-ruler sw-rl"></div><canvas class="sw-fx"></canvas><div class="sw-intro">PS</div>
     <div class="sw-hud"><span class="sw-dots">${COLORS.slice(0, 4).map((c) => `<i style="background:${c}"></i>`).join('')}</span>
     <span class="sw-status"><span id="sw-ag"><b>${N}</b> agents</span><span id="sw-ly"><b>0</b> / ${total} layers</span><span class="sw-bar"><i></i></span></span>
     <button data-a="tour" class="on">Touring</button><button data-a="speed">2×</button><button data-a="live" class="pri" hidden>Go live</button><button data-a="x" class="x" title="Exit (Esc)">✕</button></div>`;
@@ -180,13 +180,40 @@ function swarm() {
     const color = COLORS[i], el = document.createElement('div'); el.className = 'sw-cur'; el.style.opacity = 0; el.innerHTML = ARROW(color);
     root.append(el);
     const left = i % 2 === 0;
-    return { el, color, shape: 'arrow', x: left ? -40 : innerWidth + 40, y: rand(120, innerHeight - 120), st: 'idle', wake: .3 + i * .22, speed: rand(480, 1000), L: null, t0: 0, dur: 0, fx: 0, fy: 0, bend: 0, wx: innerWidth / 2, wy: innerHeight / 2, wt: 0, ph: null, sel: null, typed: 0 };
+    return { el, color, shape: 'arrow', x: left ? -40 : innerWidth + 40, y: rand(120, innerHeight - 120), st: 'idle', wake: .3 + i * .22, speed: rand(480, 1000), L: null, t0: 0, dur: 0, fx: 0, fy: 0, bend: 0, wx: innerWidth / 2, wy: innerHeight / 2, wt: 0, ph: null, sel: null, typed: 0, guide: null, sayAt: rand(1.5, 5) };
   });
 
   let T = 0, last = performance.now(), done = 0, tour = true, speed = 2, over = false, finishing = false;
   let autoY = 0, lastUser = -99, manualOff = false, lastRefresh = 0;   // autoY: where our own scrolling left the page; a different position means the visitor scrolled
   const setShape = (a, s) => { if (a.shape !== s) { a.shape = s; a.el.innerHTML = s === 'cross' ? CROSS(a.color) : ARROW(a.color); } };
   const rectNow = (L) => L.el.getBoundingClientRect();
+
+  // ---- the crazy part: comet trails, sparks, shockwaves, guide lines, slams, speech bubbles, shake, confetti ----
+  const fxc = $('.sw-fx', root), fx = fxc.getContext('2d'); let parts = [], rings = [];
+  const fsize = () => { fxc.width = innerWidth; fxc.height = innerHeight; }; fsize(); addEventListener('resize', fsize);
+  const burst = (x, y, color, n = 18, sp = 280) => { for (let i = 0; i < n && parts.length < 800; i++) { const an = Math.random() * 6.283, v = rand(.3, 1) * sp; parts.push({ x, y, vx: Math.cos(an) * v, vy: Math.sin(an) * v - 40, life: 0, max: rand(.5, 1.1), s: rand(2, 5), c: Math.random() < .3 ? '#fff' : color, g: 420 }); } };
+  const ring = (x, y, color, big = 140) => rings.push({ x, y, c: color, r: 4, max: big, life: 0 });
+  const confetti = () => { for (let i = 0; i < 200; i++) parts.push({ x: innerWidth / 2 + rand(-140, 140), y: innerHeight + 10, vx: rand(-620, 620), vy: -rand(600, 1200), life: 0, max: rand(1.4, 2.8), s: rand(5, 10), c: COLORS[(Math.random() * COLORS.length) | 0], g: 900, rect: true, rot: rand(0, 6) }); };
+  const trail = (a) => { for (let k = 0; k < 2; k++) parts.push({ x: a.x + rand(-2, 2), y: a.y + rand(-2, 2), vx: rand(-30, 30), vy: rand(-30, 30), life: 0, max: rand(.25, .55), s: rand(2, 4.5), c: a.color, g: 0 }); };
+  const shake = () => { const t = $('#app'); t.classList.remove('sw-shake'); void t.offsetWidth; t.classList.add('sw-shake'); };
+  const pop = (el) => { el.classList.remove('sw-pop'); void el.offsetWidth; el.classList.add('sw-pop'); setTimeout(() => el.classList.remove('sw-pop'), 700); };
+  const SAY = ['ship it', 'LGTM', '+1', 'nice', 'tests green', 'merging…', 'wow', 'deploy!', 'rebasing', 'ok ok ok', '🔥', 'refactor?', 'on it', 'looks good'];
+  const say = (a) => { const d = document.createElement('div'); d.className = 'sw-say'; d.textContent = SAY[(Math.random() * SAY.length) | 0]; a.el.append(d); setTimeout(() => d.remove(), 1700); };
+  const drawFx = (dt) => {
+    fx.clearRect(0, 0, fxc.width, fxc.height);
+    const d = Math.min(dt, .05);
+    fx.setLineDash([5, 4]); fx.lineWidth = 1;                       // design-tool guide lines through the box being drawn
+    for (const a of ag) if (a.guide) { const g = a.guide; fx.strokeStyle = a.color + 'aa'; fx.beginPath(); fx.moveTo(g.l, 0); fx.lineTo(g.l, fxc.height); fx.moveTo(g.r, 0); fx.lineTo(g.r, fxc.height); fx.moveTo(0, g.t); fx.lineTo(fxc.width, g.t); fx.moveTo(0, g.b); fx.lineTo(fxc.width, g.b); fx.stroke(); }
+    fx.setLineDash([]);
+    for (let i = rings.length - 1; i >= 0; i--) { const r = rings[i]; r.life += d; const p = r.life / .6; if (p >= 1) { rings.splice(i, 1); continue; } fx.globalAlpha = 1 - p; fx.strokeStyle = r.c; fx.lineWidth = 3 * (1 - p) + 1; fx.beginPath(); fx.arc(r.x, r.y, r.r + (r.max - r.r) * easeOut(p), 0, 7); fx.stroke(); }
+    for (let i = parts.length - 1; i >= 0; i--) {
+      const p = parts[i]; p.life += d; if (p.life >= p.max) { parts.splice(i, 1); continue; }
+      p.vy += p.g * d; p.x += p.vx * d; p.y += p.vy * d; fx.globalAlpha = 1 - p.life / p.max; fx.fillStyle = p.c;
+      if (p.rect) { fx.save(); fx.translate(p.x, p.y); fx.rotate(p.rot + p.life * 8); fx.fillRect(-p.s / 2, -p.s / 3, p.s, p.s * .6); fx.restore(); } else fx.fillRect(p.x - p.s / 2, p.y - p.s / 2, p.s, p.s);
+    }
+    fx.globalAlpha = 1;
+  };
+
   const finish = (L) => {
     L.done = true; done++;
     const left = pending.get(L.el) - 1; pending.set(L.el, left);
@@ -280,6 +307,8 @@ function swarm() {
       if (T < a.wake) continue;
       a.el.style.opacity = 1;
       const L = a.L;
+      a.guide = null;
+      if (a.st !== 'idle' && T > a.sayAt) { say(a); a.sayAt = T + rand(2.5, 6); }
       if (a.st === 'idle') {
         const nxt = T > 2.4 && !finishing ? pick() : null;
         if (nxt) beginFly(a, nxt);
@@ -292,7 +321,7 @@ function swarm() {
         const dx = r.left - a.fx, dy = r.top - a.fy, D = Math.hypot(dx, dy) || 1, s = Math.sin(Math.PI * e);
         a.x = a.fx + dx * e - (dy / D) * a.bend * s; a.y = a.fy + dy * e + (dx / D) * a.bend * s;
         if (p >= 1) {
-          setShape(a, 'cross'); a.t0 = T; a.x = r.left; a.y = r.top;
+          setShape(a, 'cross'); a.t0 = T; a.x = r.left; a.y = r.top; ring(a.x, clamp(a.y, 0, innerHeight), a.color, 70);
           if (L.type === 'text') { a.st = 'frame'; a.dur = clamp(r.width / (a.speed * .9), .3, .6); a.sel = makeSel(false); }
           else { a.st = 'drag'; a.dur = clamp(Math.hypot(r.width, r.height) / (a.speed * .8), .35, 1.1); a.ph = makePh(L, a); a.sel = makeSel(false); }
         }
@@ -302,6 +331,7 @@ function swarm() {
         const w = Math.max(1, e * r.width), h = a.st === 'frame' ? Math.max(1, Math.min(r.height, lh) * e) : Math.max(1, e * r.height);
         place(a.sel, r, w, h); $('em', a.sel).textContent = `${Math.round(w)} × ${Math.round(h)}`;
         if (a.ph) place(a.ph, r, w, h);
+        a.guide = { l: r.left, t: r.top, r: r.left + w, b: r.top + h };
         a.x = clamp(r.left + w, 24, innerWidth - 16); a.y = clamp(r.top + h, 24, innerHeight - 70);
         if (p >= 1) {
           if (a.st === 'frame') {
@@ -315,6 +345,9 @@ function swarm() {
         const r = rectNow(L); place(a.sel, r, r.width, r.height); if (a.ph) place(a.ph, r, r.width, r.height);
         if (T - a.t0 >= a.dur) {
           if (L.type === 'rect') styleRect(L); else revealImg(L);
+          const rr = rectNow(L); pop(L.el);
+          for (const [x, y] of [[rr.left, rr.top], [rr.right, rr.top], [rr.left, rr.bottom], [rr.right, rr.bottom]]) burst(clamp(x, 6, innerWidth - 6), clamp(y, 6, innerHeight - 6), a.color, 7, 240);
+          ring(a.x, a.y, a.color, 170); if (rr.width * rr.height > 150000) shake();
           a.ph.classList.add('fade'); const ph = a.ph; setTimeout(() => ph.remove(), 400); a.ph = null;
           a.sel.remove(); a.sel = null; a.t0 = T;
           if (L.units) { a.st = 'type'; a.typed = 0; a.cps = clamp(L.len / 2.6, 38, 90) * rand(.9, 1.1); L.el.classList.remove('sw-t'); }
@@ -326,10 +359,14 @@ function swarm() {
         const u = setTyped(L, Math.floor(a.typed));
         $$('.sw-caret', L.el).forEach((c) => c.remove());
         if (u) { const c = document.createElement('span'); c.className = 'sw-caret'; u.w.insertBefore(c, u.rest); const cr = c.getBoundingClientRect(); a.x = clamp(cr.right + 10, 24, innerWidth - 16); a.y = clamp(cr.bottom + 6, 24, innerHeight - 70); }
-        if (a.typed >= L.len) { a.sel?.remove(); a.sel = null; a.st = 'settle'; a.t0 = T; a.dur = .2; }
+        if (a.typed >= L.len) {
+          a.sel?.remove(); a.sel = null; a.st = 'settle'; a.t0 = T; a.dur = .2;
+          burst(a.x, a.y, a.color, 10, 190); ring(a.x, a.y, a.color, 80); L.el.classList.add('sw-glitch'); setTimeout(() => L.el.classList.remove('sw-glitch'), 450);
+        }
       } else if (a.st === 'settle') {
         if (T - a.t0 >= a.dur) { finish(L); park(a); }
       }
+      if (a.st === 'fly' || a.st === 'drag' || a.st === 'frame') trail(a);
       a.el.style.transform = `translate(${a.x}px,${a.y}px)`;
     }
 
@@ -351,8 +388,10 @@ function swarm() {
     const pct = done / total;
     fill.style.width = (pct * 100).toFixed(0) + '%';
     lyEl.innerHTML = `<b>${done}</b> / ${total} layers`;
+    drawFx(dt);
     if (done >= total && !finishing && ag.every((a) => a.st === 'idle')) {
-      finishing = true; btn('live').hidden = false; btn('tour').hidden = true; btn('speed').hidden = true; fill.style.width = '100%';
+      finishing = true; confetti(); shake(); ring(innerWidth / 2, innerHeight / 2, '#ef4444', 460); ring(innerWidth / 2, innerHeight / 2, '#ffffff', 320);
+      btn('live').hidden = false; btn('tour').hidden = true; btn('speed').hidden = true; fill.style.width = '100%';
       setTimeout(() => golive(false), 2600);
     }
     requestAnimationFrame(frame);

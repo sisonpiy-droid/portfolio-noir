@@ -317,3 +317,14 @@ body:not(.sw-run) .hero-cutout-img{animation:imgGlitch 8s infinite,imgBreathe 6s
 
 .sw-x{display:none!important}
 .sw-tail{display:none}
+
+/* ---- swarm effects ---- */
+.sw-fx{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.sw-pop{animation:swPop .6s cubic-bezier(.2,1.5,.4,1)}
+@keyframes swPop{0%{transform:scale(.9);filter:brightness(2.4) saturate(1.5)}55%{transform:scale(1.035);filter:brightness(1.3)}100%{transform:none;filter:none}}
+.sw-glitch{animation:swGlitch .42s steps(2)}
+@keyframes swGlitch{0%{text-shadow:-3px 0 #22d3ee,3px 0 #ef4444;transform:translateX(-3px)}40%{text-shadow:3px 0 #22d3ee,-3px 0 #ef4444;transform:translateX(3px)}100%{text-shadow:none;transform:none}}
+.sw-say{position:absolute;left:18px;top:-8px;background:#fff;color:#111;font:700 11px/1 Inter,system-ui,sans-serif;padding:5px 9px;border-radius:10px 10px 10px 2px;white-space:nowrap;pointer-events:none;animation:swSay 1.6s ease-out forwards}
+@keyframes swSay{0%{opacity:0;transform:translateY(6px) scale(.7)}12%{opacity:1;transform:none}80%{opacity:1}100%{opacity:0;transform:translateY(-24px)}}
+.sw-shake{animation:swShake .34s linear}
+@keyframes swShake{0%,100%{transform:translate(0,0)}20%{transform:translate(-7px,3px)}40%{transform:translate(6px,-4px)}60%{transform:translate(-5px,-2px)}80%{transform:translate(4px,4px)}}
