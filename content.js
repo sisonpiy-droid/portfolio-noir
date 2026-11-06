@@ -16,7 +16,7 @@ export const profile = {
 export const stats = [
   { n: '486', l: 'Tests passing' },
   { n: '9', l: 'Products shipped' },
-  { n: '82/82', l: 'Investors refreshed, 0 errors' },
+  { n: '82/82', l: 'Refreshed, 0 errors' },
 ];
 
 export const about = {

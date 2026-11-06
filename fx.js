@@ -1,5 +1,5 @@
-// Aurora canvas + a "swarm" page build: named multiplayer cursors drag out every block and fill it in, while the page tours itself.
-// The idea is a tribute to Swarm by Joel Califa; this is a small independent implementation.
+// Aurora canvas + a "swarm" page build. Multiplayer cursors draw grey wireframe boxes, type the text in letter by letter,
+// reveal images top to bottom, then the real styling fades in. The idea is a tribute to Swarm by Joel Califa; this is a small independent implementation.
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -7,6 +7,7 @@ const mode = new URLSearchParams(location.search).get('swarm');
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const rand = (a, b) => a + Math.random() * (b - a);
 const ease = (t) => (t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+const easeOut = (t) => 1 - Math.pow(1 - t, 3);
 
 // ---- aurora: three drifting orbs + slow op-art rings that follow the mouse. Runs only while the hero is on screen. ----
 function aurora() {
@@ -49,76 +50,180 @@ function aurora() {
 }
 
 // ---- swarm ----
-const NAMES = ['Ada', 'Linus', 'Grace', 'Alan', 'Margaret', 'Ken', 'Barbara', 'Dennis', 'Radia', 'Guido', 'Frances', 'Bjarne', 'Hedy', 'Tim'];
-const COLORS = ['#F24E1E', '#A259FF', '#1ABCFE', '#0ACF83', '#FF7262', '#FFC700', '#9747FF', '#E8467C', '#14AE5C', '#0D99FF', '#FF8A00', '#00B5CE'];
-const TARGETS = '.nav-dock,.hero-wordmark-svg,.hero-script,.hero-name,.hero-role-pill,.hero-desc,.hero-actions,.hero-stats-row,.hero-cutout-wrap,.hud-card,.hud-tech-tags,.section-divider-bar,.section-header,.glass-card';
+const COLORS = ['#F24E1E', '#A259FF', '#1ABCFE', '#0ACF83', '#FF7262', '#FFC700', '#E8467C', '#14AE5C', '#9747FF'];
 const SPEEDS = [1, 2, 4];
+const IMG_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.6"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M21 16l-5-5-8 9"/></svg>';
+const ARROW = (c) => `<svg width="22" height="22" viewBox="0 0 24 24" style="left:-3px;top:-3px"><path d="M5 3l14 7.5-6 1.8-2.2 6.2z" fill="${c}" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/></svg>`;
+const CROSS = (c) => `<svg width="24" height="24" viewBox="0 0 24 24" style="left:-12px;top:-12px"><path d="M12 4v16M4 12h16" stroke="#fff" stroke-width="4.5" stroke-linecap="round"/><path d="M12 4v16M4 12h16" stroke="${c}" stroke-width="2" stroke-linecap="round"/></svg>`;
 
 function swarm() {
   history.scrollRestoration = 'manual';
   scrollTo(0, 0);
-  const all = $$(TARGETS).map((el) => { const r = el.getBoundingClientRect(); return { el, top: r.top + scrollY, left: r.left, done: false, by: null }; })
-    .sort((a, b) => a.top - b.top || a.left - b.left);
-  all.forEach((t) => t.el.classList.add('sw-h'));
+  const roots = [$('#dock'), $('#app')];
+  const inSvg = (el) => !!el.closest('svg');
+  const all = roots.flatMap((r) => $$('*', r)).filter((el) => !inSvg(el) || false);
 
+  // ---------- 1. find the layers ----------
+  const painted = (el) => {
+    const cs = getComputedStyle(el);
+    const bg = cs.backgroundColor, hasBg = bg && !/^rgba\(\d+, \d+, \d+, 0\)$|^transparent$/.test(bg);
+    const hasImg = cs.backgroundImage !== 'none', hasSh = cs.boxShadow !== 'none';
+    const hasBd = ['Top', 'Right', 'Bottom', 'Left'].some((s) => parseFloat(cs['border' + s + 'Width']) > 0 && cs['border' + s + 'Style'] !== 'none' && !/, 0\)$/.test(cs['border' + s + 'Color']));
+    return hasBg || hasImg || hasSh || hasBd ? { fill: hasBg || hasImg || hasSh, radius: cs.borderRadius } : null;
+  };
+  const gridEl = $('.hero-bg-grid');
+  const layers = [], rectOf = new Map(), textRoots = new Set();
+  const visible = (el) => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
+  const doc = (el) => { const r = el.getBoundingClientRect(); return { top: r.top + scrollY, left: r.left }; };
+  const depth = (el) => { let d = 0; for (let e = el; e; e = e.parentElement) d++; return d; };
+  const add = (type, el, extra = {}) => { const p = doc(el); const L = { type, el, top: p.top, left: p.left, depth: depth(el), done: false, by: null, ...extra }; layers.push(L); return L; };
+
+  for (const el of all) {
+    if (el === gridEl || gridEl?.contains(el) || el.closest('#toast') || !visible(el)) continue;
+    if (el.tagName === 'IMG' || el.matches('.hero-wordmark-svg')) { add('img', el); continue; }
+    const pt = painted(el);
+    if (pt) rectOf.set(el, add('rect', el, pt));
+  }
+  const ownsText = (el) => [...el.childNodes].some((n) => n.nodeType === 3 && n.data.trim());
+  for (const el of all) {
+    if (el.closest('#toast') || el.closest('svg') || !visible(el) || gridEl?.contains(el) || !ownsText(el)) continue;
+    if (getComputedStyle(el).display === 'inline') {
+      let p = el.parentElement, inside = false;
+      for (; p; p = p.parentElement) if (textRoots.has(p)) { inside = true; break; }
+      if (inside) continue;
+    }
+    textRoots.add(el);
+    const ownerOf = (n) => { for (let p = n.parentElement; p; p = p.parentElement) if (textRoots.has(p)) return p; return null; };
+    const units = [];
+    const tw = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    for (let n = tw.nextNode(); n; n = tw.nextNode()) if (n.data.trim() && ownerOf(n) === el) units.push(n);
+    const rl = rectOf.get(el);
+    if (rl) rl.nodes = units; else add('text', el, { nodes: units });
+  }
+  // dependencies: a layer waits for the nearest painted ancestor (a text layer also waits for its own box)
+  for (const L of layers) {
+    let p = L.type === 'rect' ? L.el.parentElement : L.el;
+    for (; p; p = p.parentElement) if (rectOf.has(p) && rectOf.get(p) !== L) { L.dep = rectOf.get(p); break; }
+  }
+  layers.sort((a, b) => a.top - b.top || a.depth - b.depth || (a.type === 'rect' ? -1 : 1) - (b.type === 'rect' ? -1 : 1) || a.left - b.left);
+  const total = layers.length;
+
+  // small svg icons (button arrows, link icons) show once their owner is built
+  const icons = $$('svg', roots[1]).filter((s) => !s.closest('.hero-wordmark-svg')).concat($$('svg', roots[0]));
+  icons.forEach((s) => s.classList.add('sw-ic'));
+  const pending = new Map();
+  for (const L of layers) pending.set(L.el, (pending.get(L.el) || 0) + 1);
+
+  // ---------- 2. hide everything ----------
+  document.body.classList.add('sw-run');
+  gridEl?.classList.add('sw-i');
+  for (const L of layers) {
+    if (L.type === 'rect') L.el.classList.add('sw-r');
+    else if (L.type === 'img') L.el.classList.add('sw-i');
+    if (L.nodes) {
+      L.el.classList.add('sw-t');
+      L.units = L.nodes.map((n) => {
+        const w = document.createElement('span'); w.className = 'sw-w';
+        const typed = document.createTextNode(''), rest = document.createElement('span'); rest.className = 'sw-rest'; rest.textContent = n.data;
+        w.append(typed, rest); n.replaceWith(w);
+        return { w, typed, rest, full: n.data, node: n };
+      });
+      L.len = L.units.reduce((s, u) => s + u.full.length, 0);
+    }
+  }
+  const setTyped = (L, n) => {
+    let left = n, last = null;
+    for (const u of L.units) {
+      const k = clamp(left, 0, u.full.length); left -= k;
+      u.typed.data = u.full.slice(0, k); u.rest.textContent = u.full.slice(k);
+      if (k > 0 && k < u.full.length) last = u;
+    }
+    return last;
+  };
+  const restoreText = (L) => { L.el.classList.remove('sw-t'); for (const u of L.units) { u.w.replaceWith(u.node); } };
+
+  // ---------- 3. overlay, HUD, agents ----------
   const root = document.createElement('div'); root.className = 'sw-root';
-  root.innerHTML = `<div class="sw-ruler sw-rt"></div><div class="sw-ruler sw-rl"></div><div class="sw-splash">PS</div>
-    <div class="sw-hud"><span class="sw-dots"></span><span class="sw-sep"></span>
-    <span class="sw-status"><span id="sw-st">Scanning page…</span><span class="sw-bar"><i></i></span></span>
+  const N = 9;
+  root.innerHTML = `<div class="sw-shield"></div><div class="sw-ruler sw-rt"></div><div class="sw-ruler sw-rl"></div><div class="sw-intro">PS</div>
+    <div class="sw-hud"><span class="sw-dots">${COLORS.slice(0, 4).map((c) => `<i style="background:${c}"></i>`).join('')}</span>
+    <span class="sw-status"><span id="sw-ag"><b>${N}</b> agents</span><span id="sw-ly"><b>0</b> / ${total} layers</span><span class="sw-bar"><i></i></span></span>
     <button data-a="tour" class="on">Touring</button><button data-a="speed">1×</button><button data-a="live" class="pri" hidden>Go live</button><button data-a="x" class="x" title="Exit (Esc)">✕</button></div>`;
   document.body.append(root);
-  const hud = $('.sw-hud', root), st = $('#sw-st', root), fill = $('.sw-bar i', root), btn = (a) => $(`[data-a="${a}"]`, root);
+  const hud = $('.sw-hud', root), lyEl = $('#sw-ly', root), fill = $('.sw-bar i', root), intro = $('.sw-intro', root);
+  const btn = (a) => $(`[data-a="${a}"]`, root);
+  requestAnimationFrame(() => { root.classList.add('on'); hud.classList.add('on'); });
 
-  const N = Math.min(14, NAMES.length);
-  const cs = Array.from({ length: N }, (_, i) => {
-    const color = COLORS[i % COLORS.length], el = document.createElement('div');
-    el.className = 'sw-cur'; el.style.opacity = 0;
-    el.innerHTML = `<svg width="22" height="22" viewBox="0 0 24 24"><path d="M5 3l14 7.5-6 1.8-2.2 6.2z" fill="${color}" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/></svg><b style="background:${color}">${NAMES[i]}</b>`;
+  const ag = Array.from({ length: N }, (_, i) => {
+    const color = COLORS[i], el = document.createElement('div'); el.className = 'sw-cur'; el.style.opacity = 0; el.innerHTML = ARROW(color);
     root.append(el);
     const left = i % 2 === 0;
-    return { el, color, x: left ? -60 : innerWidth + 60, y: rand(80, innerHeight - 80), st: 'idle', wake: .9 + i * .11, t: null, sel: null, t0: 0, dur: 0, fx: 0, fy: 0, bend: 0, wx: 0, wy: 0, wt: 0 };
+    return { el, color, shape: 'arrow', x: left ? -40 : innerWidth + 40, y: rand(120, innerHeight - 120), st: 'idle', wake: .3 + i * .22, speed: rand(480, 1000), L: null, t0: 0, dur: 0, fx: 0, fy: 0, bend: 0, wx: innerWidth / 2, wy: innerHeight / 2, wt: 0, ph: null, sel: null, typed: 0 };
   });
-  $('.sw-dots', root).innerHTML = cs.slice(0, 3).map((c, i) => `<i style="background:${c.color}">${NAMES[i][0]}</i>`).join('') + `<span style="margin-left:6px">+${N - 3}</span>`;
-  requestAnimationFrame(() => hud.classList.add('on'));
 
-  let T = 0, last = performance.now(), painted = 0, tour = true, speed = 1, over = false, finishing = false;
-  const rectOf = (t) => t.el.getBoundingClientRect();
-  document.documentElement.style.scrollBehavior = 'auto';
-
-  const reveal = (t) => {
-    if (t.done) return; t.done = true; painted++;
-    t.el.classList.remove('sw-h'); t.el.classList.add('sw-in');
-    setTimeout(() => t.el.classList.remove('sw-in'), 400);
+  let T = 0, last = performance.now(), done = 0, tour = true, speed = 1, over = false, finishing = false;
+  const setShape = (a, s) => { if (a.shape !== s) { a.shape = s; a.el.innerHTML = s === 'cross' ? CROSS(a.color) : ARROW(a.color); } };
+  const rectNow = (L) => L.el.getBoundingClientRect();
+  const finish = (L) => {
+    L.done = true; done++;
+    const left = pending.get(L.el) - 1; pending.set(L.el, left);
+    if (left === 0) $$('svg', L.el).forEach((s) => s.classList.remove('sw-ic'));
+    if (L.units) restoreText(L);
   };
-  const next = () => {
-    for (const t of all) {
-      if (t.done || t.by) continue;
-      const r = rectOf(t);
-      if (r.bottom < -80) { reveal(t); continue; }        // already scrolled past: just show it
-      return r.top < innerHeight + 40 ? t : null;          // sorted by position, so nothing further is in reach yet
+  const styleRect = (L) => {
+    L.el.classList.add('sw-fade'); L.el.classList.remove('sw-r');
+    setTimeout(() => L.el.classList.remove('sw-fade'), 500);
+  };
+  const revealImg = (L) => {
+    const el = L.el; el.style.clipPath = 'inset(0 0 100% 0)'; el.classList.remove('sw-i'); void el.offsetWidth;
+    el.style.transition = 'clip-path .7s cubic-bezier(.2,.75,.2,1)'; el.style.clipPath = 'inset(0 0 0 0)';
+    setTimeout(() => { el.style.clipPath = ''; el.style.transition = ''; }, 900);
+  };
+  const instant = (L) => {   // build a layer with no cursor (skipped or scrolled past)
+    if (L.done) return;
+    if (L.type === 'rect') L.el.classList.remove('sw-r'); else if (L.type === 'img') L.el.classList.remove('sw-i');
+    finish(L);
+  };
+  const reach = (L) => { const r = rectNow(L); return r.top < innerHeight - 8 ? 1 : 0; };
+  const eligible = (L) => !L.done && !L.by && (!L.dep || L.dep.done);
+  const pick = () => {
+    for (const L of layers) {
+      if (!eligible(L)) continue;
+      const r = rectNow(L);
+      if (r.bottom < -60) { instant(L); continue; }
+      if (r.top < innerHeight - 8) return L;
     }
     return null;
   };
-  const makeSel = (c) => {
-    const s = document.createElement('div'); s.className = 'sw-sel'; s.style.borderColor = c.color;
-    s.innerHTML = `<i style="border-color:${c.color}"></i><i style="border-color:${c.color}"></i><i style="border-color:${c.color}"></i><i style="border-color:${c.color}"></i><em style="background:${c.color}"></em>`;
-    root.append(s); return s;
+  const makePh = (L, a) => {
+    const d = document.createElement('div'); d.className = 'sw-ph' + (L.type === 'rect' && !L.fill ? ' line' : '');
+    if (L.type === 'rect') d.style.borderRadius = L.radius;
+    if (L.type === 'img') d.innerHTML = IMG_ICON;
+    root.insertBefore(d, ag[0].el); return d;
   };
-  const dropSel = (s) => { s.classList.add('fade'); setTimeout(() => s.remove(), 400); };
+  const makeSel = (thin) => {
+    const s = document.createElement('div'); s.className = 'sw-sel' + (thin ? ' thin' : ''); s.innerHTML = '<i></i><i></i><i></i><i></i><em></em>';
+    root.insertBefore(s, ag[0].el); return s;
+  };
+  const place = (node, r, w, h) => { node.style.transform = `translate(${r.left}px,${r.top}px)`; node.style.width = w + 'px'; node.style.height = h + 'px'; };
 
-  const golive = (instant) => {
+  const golive = (instantly) => {
     if (over) return; over = true;
     removeEventListener('keydown', onKey); removeEventListener('wheel', cancelTour); removeEventListener('touchstart', cancelTour);
-    if (instant) all.forEach(reveal);
+    for (const a of ag) { a.ph?.remove(); a.sel?.remove(); if (a.L && !a.L.done && a.L.units) { restoreText(a.L); a.L.done = true; } }
+    layers.forEach(instant);
+    icons.forEach((s) => s.classList.remove('sw-ic'));
+    document.body.classList.remove('sw-run'); gridEl?.classList.remove('sw-i');
     document.documentElement.style.scrollBehavior = '';
     root.classList.add('off');
-    if (tour && !instant) scrollTo({ top: 0, behavior: 'smooth' });
-    setTimeout(() => { root.remove(); }, 650);
+    if (tour && !instantly) scrollTo({ top: 0, behavior: 'smooth' });
+    setTimeout(() => root.remove(), 750);
   };
   const cancelTour = () => { if (tour) { tour = false; btn('tour').classList.remove('on'); btn('tour').textContent = 'Tour'; document.documentElement.style.scrollBehavior = ''; } };
   const onKey = (e) => { if (e.key === 'Escape') golive(true); else if (['ArrowDown', 'ArrowUp', 'PageDown', 'PageUp', ' ', 'Home', 'End'].includes(e.key)) cancelTour(); };
   addEventListener('keydown', onKey); addEventListener('wheel', cancelTour, { passive: true }); addEventListener('touchstart', cancelTour, { passive: true });
-  root.addEventListener('click', (e) => {
+  document.documentElement.style.scrollBehavior = 'auto';
+  hud.addEventListener('click', (e) => {
     const a = e.target.closest('button')?.dataset.a; if (!a) return;
     if (a === 'x') golive(true);
     else if (a === 'live') golive(false);
@@ -126,59 +231,90 @@ function swarm() {
     else if (a === 'tour') { tour = !tour; btn('tour').classList.toggle('on', tour); btn('tour').textContent = tour ? 'Touring' : 'Tour'; document.documentElement.style.scrollBehavior = tour ? 'auto' : ''; }
   });
 
+  const beginFly = (a, L) => {
+    L.by = a; a.L = L; a.st = 'fly'; a.t0 = T; a.fx = a.x; a.fy = a.y; setShape(a, 'arrow');
+    const r = rectNow(L), d = Math.hypot(r.left - a.x, r.top - a.y);
+    a.dur = clamp(d / a.speed, .25, .85); a.bend = (Math.random() < .5 ? -1 : 1) * rand(.04, .13) * Math.min(d, 600);
+  };
+  const park = (a) => {   // after a layer: rest near the work, then look for the next one
+    a.st = 'idle'; a.L = null; a.wt = 0;
+  };
+
   const frame = (now) => {
     if (over) return;
     const dt = Math.min(.2, (now - last) / 1000) * speed; last = now; T += dt;
-    if (T > .8) $('.sw-splash', root).classList.add('gone');
+    if (T > 2.4) intro.classList.add('gone');
 
-    for (const c of cs) {
-      if (T < c.wake) continue;
-      c.el.style.opacity = 1;
-      if (c.st === 'idle' && !finishing) {
-        const t = next();
-        if (t) {
-          t.by = c; c.t = t; c.st = 'fly'; c.t0 = T; c.fx = c.x; c.fy = c.y;
-          const r = rectOf(t); const d = Math.hypot(r.left - c.x, r.top - c.y);
-          c.dur = clamp(d / 900, .22, .7); c.bend = (Math.random() < .5 ? -1 : 1) * rand(.05, .14) * Math.min(d, 600);
-        } else {                                                          // nothing in reach: drift near the bottom of the viewport
-          if (T > c.wt) { c.wx = innerWidth * rand(.1, .9); c.wy = innerHeight * rand(.55, .9); c.wt = T + rand(1, 2.2); }
-          c.x += (c.wx - c.x) * Math.min(1, dt * 2.2); c.y += (c.wy - c.y) * Math.min(1, dt * 2.2);
+    for (const a of ag) {
+      if (T < a.wake) continue;
+      a.el.style.opacity = 1;
+      const L = a.L;
+      if (a.st === 'idle') {
+        const nxt = T > 2.4 && !finishing ? pick() : null;
+        if (nxt) beginFly(a, nxt);
+        else {                                                    // drift around, like saai's scanning phase
+          if (T > a.wt) { a.wx = innerWidth * rand(.08, .92); a.wy = innerHeight * rand(.15, .85); a.wt = T + rand(1.2, 2.6); }
+          const k = Math.min(1, dt * 1.6); a.x += (a.wx - a.x) * k; a.y += (a.wy - a.y) * k;
         }
-      } else if (c.st === 'idle' && finishing) {
-        c.x += (innerWidth * (c.x > innerWidth / 2 ? 1.1 : -.1) - c.x) * Math.min(1, dt * 2);
+      } else if (a.st === 'fly') {
+        const r = rectNow(L), p = clamp((T - a.t0) / a.dur, 0, 1), e = ease(p);
+        const dx = r.left - a.fx, dy = r.top - a.fy, D = Math.hypot(dx, dy) || 1, s = Math.sin(Math.PI * e);
+        a.x = a.fx + dx * e - (dy / D) * a.bend * s; a.y = a.fy + dy * e + (dx / D) * a.bend * s;
+        if (p >= 1) {
+          setShape(a, 'cross'); a.t0 = T; a.x = r.left; a.y = r.top;
+          if (L.type === 'text') { a.st = 'frame'; a.dur = clamp(r.width / (a.speed * .9), .3, .6); a.sel = makeSel(false); }
+          else { a.st = 'drag'; a.dur = clamp(Math.hypot(r.width, r.height) / (a.speed * .8), .35, 1.1); a.ph = makePh(L, a); a.sel = makeSel(false); }
+        }
+      } else if (a.st === 'drag' || a.st === 'frame') {
+        const r = rectNow(L), p = clamp((T - a.t0) / a.dur, 0, 1), e = ease(p);
+        const lh = parseFloat(getComputedStyle(L.el).lineHeight) || 20;
+        const w = Math.max(1, e * r.width), h = a.st === 'frame' ? Math.max(1, Math.min(r.height, lh) * e) : Math.max(1, e * r.height);
+        place(a.sel, r, w, h); $('em', a.sel).textContent = `${Math.round(w)} × ${Math.round(h)}`;
+        if (a.ph) place(a.ph, r, w, h);
+        a.x = clamp(r.left + w, 24, innerWidth - 16); a.y = clamp(r.top + h, 24, innerHeight - 70);
+        if (p >= 1) {
+          if (a.st === 'frame') {
+            const fr = rectNow(L); place(a.sel, fr, fr.width, fr.height); a.sel.classList.add('thin'); setShape(a, 'arrow');
+            L.el.classList.remove('sw-t'); a.st = 'type'; a.t0 = T; a.typed = 0;
+            a.cps = clamp(L.len / 2.6, 38, 90) * rand(.9, 1.1);    // chars per second, a long paragraph never takes more than ~3s
+          } else { setShape(a, 'arrow'); a.st = 'hold'; a.t0 = T; a.dur = rand(.12, .2); }
+        }
+      } else if (a.st === 'hold') {
+        const r = rectNow(L); place(a.sel, r, r.width, r.height); if (a.ph) place(a.ph, r, r.width, r.height);
+        if (T - a.t0 >= a.dur) {
+          if (L.type === 'rect') styleRect(L); else revealImg(L);
+          a.ph.classList.add('fade'); const ph = a.ph; setTimeout(() => ph.remove(), 400); a.ph = null;
+          a.sel.remove(); a.sel = null; a.t0 = T;
+          if (L.units) { a.st = 'type'; a.typed = 0; a.cps = clamp(L.len / 2.6, 38, 90) * rand(.9, 1.1); L.el.classList.remove('sw-t'); }
+          else { a.st = 'settle'; a.dur = L.type === 'img' ? .6 : .3; }
+        }
+      } else if (a.st === 'type') {
+        const r = rectNow(L); if (a.sel) place(a.sel, r, r.width, r.height);
+        a.typed = Math.min(L.len, a.typed + a.cps * dt);
+        const u = setTyped(L, Math.floor(a.typed));
+        $$('.sw-caret', L.el).forEach((c) => c.remove());
+        if (u) { const c = document.createElement('span'); c.className = 'sw-caret'; u.w.insertBefore(c, u.rest); const cr = c.getBoundingClientRect(); a.x = clamp(cr.right + 10, 24, innerWidth - 16); a.y = clamp(cr.bottom + 6, 24, innerHeight - 70); }
+        if (a.typed >= L.len) { a.sel?.remove(); a.sel = null; a.st = 'settle'; a.t0 = T; a.dur = .2; }
+      } else if (a.st === 'settle') {
+        if (T - a.t0 >= a.dur) { finish(L); park(a); }
       }
-      if (c.st === 'fly') {
-        const r = rectOf(c.t), p = clamp((T - c.t0) / c.dur, 0, 1), e = ease(p);
-        const tx = r.left, ty = r.top, dx = tx - c.fx, dy = ty - c.fy, L = Math.hypot(dx, dy) || 1;
-        c.x = c.fx + dx * e - (dy / L) * c.bend * Math.sin(Math.PI * e);
-        c.y = c.fy + dy * e + (dx / L) * c.bend * Math.sin(Math.PI * e);
-        if (p >= 1) { c.st = 'drag'; c.t0 = T; c.dur = clamp(.28 + (r.width * r.height) / 1.3e6, .3, .9); c.sel = makeSel(c); }
-      } else if (c.st === 'drag') {
-        const r = rectOf(c.t), p = clamp((T - c.t0) / c.dur, 0, 1), e = ease(p);
-        const ex = r.left + e * r.width, ey = r.top + e * r.height;
-        c.x = ex; c.y = clamp(ey, 12, innerHeight - 24);
-        const s = c.sel, w = Math.max(1, ex - r.left), h = Math.max(1, ey - r.top);
-        s.style.transform = `translate(${r.left}px,${r.top}px)`; s.style.width = w + 'px'; s.style.height = h + 'px';
-        $('em', s).textContent = `${Math.round(w)} × ${Math.round(h)}`;
-        if (p >= 1) { reveal(c.t); dropSel(c.sel); c.sel = null; c.t = null; c.st = 'idle'; c.wt = 0; }
-      }
-      c.el.style.transform = `translate(${c.x}px,${c.y}px)`;
+      a.el.style.transform = `translate(${a.x}px,${a.y}px)`;
     }
 
-    // tour: keep scrolling toward the first block nobody has started yet
-    if (tour) {
-      const pend = all.find((t) => !t.done && !t.by);
-      if (pend && T > 1.1) {
-        const want = pend.top - innerHeight * .8, gap = want - scrollY;
-        if (gap > 0) scrollTo(0, scrollY + clamp(gap * 2.2, 60, 520) * dt);
+    // tour: when everything in view is claimed, scroll on to the next block
+    if (tour && T > 2.4) {
+      const inReach = layers.some((l) => eligible(l) && reach(l));
+      if (!inReach) {
+        const nxt = layers.find((l) => !l.done && !l.by && (!l.dep || l.dep.done));
+        if (nxt) { const gap = nxt.top - innerHeight * .45 - scrollY; if (gap > 0) scrollTo(0, scrollY + clamp(gap * 2, 90, 420) * dt); }
       }
     }
-    const pct = painted / all.length;
+    const pct = done / total;
     fill.style.width = (pct * 100).toFixed(0) + '%';
-    st.textContent = T < .8 ? 'Scanning page…' : painted < all.length ? `Building · ${(pct * 100).toFixed(0)}%` : 'Page built';
-    if (painted >= all.length && !finishing && cs.every((c) => c.st === 'idle')) {
+    lyEl.innerHTML = `<b>${done}</b> / ${total} layers`;
+    if (done >= total && !finishing && ag.every((a) => a.st === 'idle')) {
       finishing = true; btn('live').hidden = false; btn('tour').hidden = true; btn('speed').hidden = true; fill.style.width = '100%';
-      setTimeout(() => golive(false), 2200);
+      setTimeout(() => golive(false), 2600);
     }
     requestAnimationFrame(frame);
   };
@@ -187,6 +323,6 @@ function swarm() {
 
 export function initFx() {
   aurora();
-  if (reduced || mode === 'off') return;
+  if (reduced || mode === 'off' || innerWidth < 700) return;
   swarm();
 }
