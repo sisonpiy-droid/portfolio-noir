@@ -116,5 +116,5 @@ function parallax() {
 export function initFx() {
   aurora(); reveals(); activeNav(); parallax();
   document.body.classList.add('pre');
-  swarm(() => { document.body.classList.add('built'); countUp(); });
+  swarm(() => { document.body.classList.replace('pre', 'built'); countUp(); });
 }
