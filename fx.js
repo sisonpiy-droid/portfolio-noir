@@ -115,21 +115,22 @@ function swarm() {
   for (const L of layers) pending.set(L.el, (pending.get(L.el) || 0) + 1);
 
   // ---------- 2. hide everything ----------
+  const hideText = (L) => {   // convert a text layer so it can be typed (also used to retype it later)
+    L.el.classList.add('sw-t');
+    L.units = L.nodes.map((n) => {
+      const w = document.createElement('span'); w.className = 'sw-w';
+      const typed = document.createTextNode(''), rest = document.createElement('span'); rest.className = 'sw-rest'; rest.textContent = n.data;
+      w.append(typed, rest); n.replaceWith(w);
+      return { w, typed, rest, full: n.data, node: n };
+    });
+    L.len = L.units.reduce((s, u) => s + u.full.length, 0);
+  };
   document.body.classList.add('sw-run');
   gridEl?.classList.add('sw-i');
   for (const L of layers) {
     if (L.type === 'rect') L.el.classList.add('sw-r');
     else if (L.type === 'img') L.el.classList.add('sw-i');
-    if (L.nodes) {
-      L.el.classList.add('sw-t');
-      L.units = L.nodes.map((n) => {
-        const w = document.createElement('span'); w.className = 'sw-w';
-        const typed = document.createTextNode(''), rest = document.createElement('span'); rest.className = 'sw-rest'; rest.textContent = n.data;
-        w.append(typed, rest); n.replaceWith(w);
-        return { w, typed, rest, full: n.data, node: n };
-      });
-      L.len = L.units.reduce((s, u) => s + u.full.length, 0);
-    }
+    if (L.nodes) hideText(L);
   }
   const setTyped = (L, n) => {
     let left = n, last = null;
@@ -140,7 +141,7 @@ function swarm() {
     }
     return last;
   };
-  const restoreText = (L) => { L.el.classList.remove('sw-t'); for (const u of L.units) { u.w.replaceWith(u.node); } };
+  const restoreText = (L) => { if (!L.units) return; L.el.classList.remove('sw-t'); for (const u of L.units) u.w.replaceWith(u.node); L.units = null; };
 
   // ---------- 3. overlay, HUD, agents ----------
   const root = document.createElement('div'); root.className = 'sw-root';
@@ -148,7 +149,7 @@ function swarm() {
   root.innerHTML = `<div class="sw-shield"></div><div class="sw-ruler sw-rt"></div><div class="sw-ruler sw-rl"></div><div class="sw-intro">PS</div>
     <div class="sw-hud"><span class="sw-dots">${COLORS.slice(0, 4).map((c) => `<i style="background:${c}"></i>`).join('')}</span>
     <span class="sw-status"><span id="sw-ag"><b>${N}</b> agents</span><span id="sw-ly"><b>0</b> / ${total} layers</span><span class="sw-bar"><i></i></span></span>
-    <button data-a="tour" class="on">Touring</button><button data-a="speed">2×</button><button data-a="live" class="pri" hidden>Go live</button><button data-a="x" class="x" title="Exit (Esc)">✕</button></div>`;
+    <button data-a="tour" class="on">Touring</button><button data-a="speed">2×</button><button data-a="live" class="pri" hidden>Go live</button><button data-a="replay" hidden>Replay</button><button data-a="x" class="x" title="Exit (Esc)">✕</button></div>`;
   document.body.append(root);
   const hud = $('.sw-hud', root), lyEl = $('#sw-ly', root), fill = $('.sw-bar i', root), intro = $('.sw-intro', root);
   const btn = (a) => $(`[data-a="${a}"]`, root);
@@ -158,14 +159,14 @@ function swarm() {
     const color = COLORS[i], el = document.createElement('div'); el.className = 'sw-cur'; el.style.opacity = 0; el.innerHTML = ARROW(color);
     root.append(el);
     const left = i % 2 === 0;
-    return { el, color, shape: 'arrow', x: left ? -40 : innerWidth + 40, y: rand(120, innerHeight - 120), st: 'idle', wake: .3 + i * .22, speed: rand(480, 1000), L: null, t0: 0, dur: 0, fx: 0, fy: 0, bend: 0, wx: innerWidth / 2, wy: innerHeight / 2, wt: 0, ph: null, sel: null, typed: 0 };
+    return { el, color, shape: 'arrow', x: left ? -40 : innerWidth + 40, y: rand(120, innerHeight - 120), st: 'idle', wake: .3 + i * .22, speed: rand(480, 1000), L: null, t0: 0, dur: 0, fx: 0, fy: 0, bend: 0, wx: innerWidth / 2, wy: innerHeight / 2, wt: 0, ph: null, sel: null, hl: null, typed: 0, edit: false, nextEdit: 0 };
   });
 
   let T = 0, last = performance.now(), done = 0, tour = true, speed = 2, over = false, finishing = false;
   const setShape = (a, s) => { if (a.shape !== s) { a.shape = s; a.el.innerHTML = s === 'cross' ? CROSS(a.color) : ARROW(a.color); } };
   const rectNow = (L) => L.el.getBoundingClientRect();
   const finish = (L) => {
-    L.done = true; done++;
+    L.done = true; L.by = null; done++;
     const left = pending.get(L.el) - 1; pending.set(L.el, left);
     if (left === 0) $$('svg', L.el).forEach((s) => s.classList.remove('sw-ic'));
     if (L.units) restoreText(L);
@@ -208,10 +209,10 @@ function swarm() {
   };
   const place = (node, r, w, h) => { node.style.transform = `translate(${r.left}px,${r.top}px)`; node.style.width = w + 'px'; node.style.height = h + 'px'; };
 
-  const golive = (instantly) => {
+  const golive = (instantly, replaying) => {
     if (over) return; over = true;
     removeEventListener('keydown', onKey); removeEventListener('wheel', cancelTour); removeEventListener('touchstart', cancelTour);
-    for (const a of ag) { a.ph?.remove(); a.sel?.remove(); if (a.L && !a.L.done && a.L.units) { restoreText(a.L); a.L.done = true; } }
+    for (const a of ag) { a.ph?.remove(); a.sel?.remove(); a.hl?.remove(); if (a.L?.units) restoreText(a.L); }
     layers.forEach(instant);
     icons.forEach((s) => s.classList.remove('sw-ic'));
     document.body.classList.remove('sw-run'); gridEl?.classList.remove('sw-i');
@@ -219,6 +220,7 @@ function swarm() {
     root.classList.add('off');
     if (tour && !instantly) scrollTo({ top: 0, behavior: 'smooth' });
     setTimeout(() => root.remove(), 750);
+    if (!replaying) liveReveals();
   };
   const cancelTour = () => { if (tour) { tour = false; btn('tour').classList.remove('on'); btn('tour').textContent = 'Tour'; document.documentElement.style.scrollBehavior = ''; } };
   const onKey = (e) => { if (e.key === 'Escape') golive(true); else if (['ArrowDown', 'ArrowUp', 'PageDown', 'PageUp', ' ', 'Home', 'End'].includes(e.key)) cancelTour(); };
@@ -228,6 +230,7 @@ function swarm() {
     const a = e.target.closest('button')?.dataset.a; if (!a) return;
     if (a === 'x') golive(true);
     else if (a === 'live') golive(false);
+    else if (a === 'replay') { golive(true, true); setTimeout(swarm, 800); }
     else if (a === 'speed') { speed = SPEEDS[(SPEEDS.indexOf(speed) + 1) % SPEEDS.length]; btn('speed').textContent = speed + '×'; }
     else if (a === 'tour') { tour = !tour; btn('tour').classList.toggle('on', tour); btn('tour').textContent = tour ? 'Touring' : 'Tour'; document.documentElement.style.scrollBehavior = tour ? 'auto' : ''; }
   });
@@ -237,6 +240,13 @@ function swarm() {
     const r = rectNow(L), d = Math.hypot(r.left - a.x, r.top - a.y);
     a.dur = clamp(d / a.speed, .25, .85); a.bend = (Math.random() < .5 ? -1 : 1) * rand(.04, .13) * Math.min(d, 600);
   };
+  const ambientPick = () => {   // something already built that a cursor can edit again
+    const c = layers.filter((l) => l.done && !l.by && !l.fixed && (l.type === 'img' || (l.nodes && l.el.textContent.length < 140)) && (() => { const r = rectNow(l); return r.width > 0 && r.top > 30 && r.bottom < innerHeight - 30; })());
+    const imgs = c.filter((l) => l.type === 'img');
+    if (imgs.length && Math.random() < .35) return imgs[(Math.random() * imgs.length) | 0];   // photos get swapped too
+    return c.length ? c[(Math.random() * c.length) | 0] : null;
+  };
+  const swapImg = (L) => { L.el.classList.add('sw-swap'); setTimeout(() => L.el.classList.remove('sw-swap'), 650); };
   const park = (a) => {   // after a layer: rest near the work, then look for the next one
     a.st = 'idle'; a.L = null; a.wt = 0;
   };
@@ -256,15 +266,23 @@ function swarm() {
         else {                                                    // drift around, like saai's scanning phase
           if (T > a.wt) { a.wx = innerWidth * rand(.08, .92); a.wy = innerHeight * rand(.15, .85); a.wt = T + rand(1.2, 2.6); }
           const k = Math.min(1, dt * 1.6); a.x += (a.wx - a.x) * k; a.y += (a.wy - a.y) * k;
+          if (finishing && T > a.nextEdit) { a.nextEdit = T + rand(1.4, 3.6); const e = ambientPick(); if (e) { a.edit = true; beginFly(a, e); } }
         }
       } else if (a.st === 'fly') {
         const r = rectNow(L), p = clamp((T - a.t0) / a.dur, 0, 1), e = ease(p);
         const dx = r.left - a.fx, dy = r.top - a.fy, D = Math.hypot(dx, dy) || 1, s = Math.sin(Math.PI * e);
         a.x = a.fx + dx * e - (dy / D) * a.bend * s; a.y = a.fy + dy * e + (dx / D) * a.bend * s;
         if (p >= 1) {
-          setShape(a, 'cross'); a.t0 = T; a.x = r.left; a.y = r.top;
+          a.t0 = T; a.x = r.left; a.y = r.top;
+          if (a.edit) {
+            setShape(a, 'arrow'); a.dur = rand(.55, .9);
+            if (L.type === 'img') a.st = 'eimg';
+            else { a.st = 'esel'; a.sel = makeSel(true); a.hl = document.createElement('div'); a.hl.className = 'sw-hl'; root.insertBefore(a.hl, ag[0].el); }
+          } else {
+          setShape(a, 'cross');
           if (L.type === 'text') { a.st = 'frame'; a.dur = clamp(r.width / (a.speed * .9), .3, .6); a.sel = makeSel(false); }
           else { a.st = 'drag'; a.dur = clamp(Math.hypot(r.width, r.height) / (a.speed * .8), .35, 1.1); a.ph = makePh(L, a); a.sel = makeSel(false); }
+          }
         }
       } else if (a.st === 'drag' || a.st === 'frame') {
         const r = rectNow(L), p = clamp((T - a.t0) / a.dur, 0, 1), e = ease(p);
@@ -296,8 +314,22 @@ function swarm() {
         $$('.sw-caret', L.el).forEach((c) => c.remove());
         if (u) { const c = document.createElement('span'); c.className = 'sw-caret'; u.w.insertBefore(c, u.rest); const cr = c.getBoundingClientRect(); a.x = clamp(cr.right + 10, 24, innerWidth - 16); a.y = clamp(cr.bottom + 6, 24, innerHeight - 70); }
         if (a.typed >= L.len) { a.sel?.remove(); a.sel = null; a.st = 'settle'; a.t0 = T; a.dur = .2; }
+      } else if (a.st === 'esel') {   // select the text (blue highlight), then retype it
+        const r = rectNow(L), p = clamp((T - a.t0) / a.dur, 0, 1);
+        place(a.sel, r, r.width, r.height); place(a.hl, r, r.width * ease(p), r.height);
+        a.x = clamp(r.left + r.width * ease(p), 24, innerWidth - 16); a.y = clamp(r.bottom, 24, innerHeight - 70);
+        if (p >= 1) {
+          a.sel.remove(); a.sel = null; a.hl.remove(); a.hl = null;
+          hideText(L); L.el.classList.remove('sw-t'); a.st = 'type'; a.t0 = T; a.typed = 0; a.cps = clamp(L.len / 2.6, 38, 90) * rand(.9, 1.1);
+        }
+      } else if (a.st === 'eimg') {   // swap an image: it blurs back in
+        const r = rectNow(L); a.x = r.left + r.width / 2; a.y = r.top + r.height / 2;
+        if (T - a.t0 >= .45) { swapImg(L); a.st = 'settle'; a.t0 = T; a.dur = .7; }
       } else if (a.st === 'settle') {
-        if (T - a.t0 >= a.dur) { finish(L); park(a); }
+        if (T - a.t0 >= a.dur) {
+          if (a.edit) { restoreText(L); a.edit = false; L.by = null; } else finish(L);
+          park(a);
+        }
       }
       a.el.style.transform = `translate(${a.x}px,${a.y}px)`;
     }
@@ -319,16 +351,33 @@ function swarm() {
     fill.style.width = (pct * 100).toFixed(0) + '%';
     lyEl.innerHTML = `<b>${done}</b> / ${total} layers`;
     if (done >= total && !finishing && ag.every((a) => a.st === 'idle')) {
-      finishing = true; btn('live').hidden = false; btn('tour').hidden = true; btn('speed').hidden = true; fill.style.width = '100%';
-      setTimeout(() => golive(false), 2600);
+      finishing = true; fill.style.width = '100%';
+      btn('live').hidden = false; btn('replay').hidden = false; btn('tour').hidden = true;
+      $('.sw-shield', root).style.pointerEvents = 'none';          // the page can be scrolled and used while the swarm keeps editing
+      document.documentElement.style.scrollBehavior = '';
+      if (tour) scrollTo({ top: 0, behavior: 'smooth' });
+      tour = false;
+      ag.forEach((a) => { a.nextEdit = T + rand(.6, 3); });
     }
     requestAnimationFrame(frame);
   };
   requestAnimationFrame(frame);
 }
 
+// ---- after the swarm: sections fade up as they are scrolled into view ----
+function liveReveals() {
+  if (reduced || !('IntersectionObserver' in window)) return;
+  const items = $$('.section-header,.section-divider-bar,.glass-card,.hud-card').filter((el) => el.getBoundingClientRect().top + scrollY > innerHeight * .9);
+  const io = new IntersectionObserver((es) => es.forEach((e) => {
+    if (!e.isIntersecting) return;
+    e.target.classList.add('in'); io.unobserve(e.target);
+    setTimeout(() => { e.target.classList.remove('rv', 'in'); e.target.style.transitionDelay = ''; }, 1100);
+  }), { threshold: .12, rootMargin: '0px 0px -40px 0px' });
+  items.forEach((el, i) => { el.classList.add('rv'); el.style.transitionDelay = (i % 3) * 90 + 'ms'; io.observe(el); });
+}
+
 export function initFx() {
   aurora();
-  if (reduced || mode === 'off' || innerWidth < 700) return;
+  if (reduced || mode === 'off' || innerWidth < 700) { liveReveals(); return; }
   swarm();
 }
