@@ -314,3 +314,6 @@ body:not(.sw-run) .hero-cutout-img{animation:imgGlitch 8s infinite,imgBreathe 6s
 /* ---- swarm: long text stays hidden (no placeholder bars) until the swarm is over ---- */
 .sw-sk,.sw-sk *{color:transparent!important;text-shadow:none!important}
 .sw-sk::before,.sw-sk::after{visibility:hidden!important}
+
+.sw-x{display:none!important}
+.sw-tail{display:none}

@@ -132,30 +132,36 @@ function swarm() {
     else if (L.type === 'img') L.el.classList.add('sw-i');
     if (L.nodes) {
       L.el.classList.add('sw-t');
+      const fullT = L.nodes.map((n) => n.data).join('');
+      let left = fullT.trim().length >= 37 ? (L.cap = oneLine(fullT)) : Infinity;   // long text: only its first line is built
       L.units = L.nodes.map((n) => {
+        const vis = n.data.slice(0, Math.max(0, left)); left -= n.data.length;
         const w = document.createElement('span'); w.className = 'sw-w';
-        const typed = document.createTextNode(''), rest = document.createElement('span'); rest.className = 'sw-rest'; rest.textContent = n.data;
-        w.append(typed, rest); n.replaceWith(w);
-        return { w, typed, rest, full: n.data, node: n };
+        const typed = document.createTextNode(''), rest = document.createElement('span'); rest.className = 'sw-rest'; rest.textContent = vis;
+        w.append(typed, rest);
+        if (vis.length < n.data.length) { const tail = document.createElement('span'); tail.className = 'sw-tail'; tail.textContent = n.data.slice(vis.length); w.append(tail); }
+        n.replaceWith(w);
+        return { w, typed, rest, vis, full: n.data, node: n };
       });
-      L.len = L.units.reduce((s, u) => s + u.full.length, 0);
-      const full = L.units.map((u) => u.full).join('');
-      if (full.trim().length >= 37) { L.cap = oneLine(full); L.len = Math.min(L.len, L.cap); }   // long text: only its first line is typed
+      L.len = L.units.reduce((s, u) => s + u.vis.length, 0);
     }
   }
-  for (const L of deferred) {   // hidden until the swarm ends
-    if (L.type === 'rect') L.el.classList.add('sw-r'); else if (L.type === 'img') L.el.classList.add('sw-i');
-    if (L.nodes) L.el.classList.add('sw-sk');
-  }
+  for (const L of deferred) L.el.classList.add('sw-x');   // gone until the swarm ends, so the boxes carry no empty space
   const setTyped = (L, n) => {
     let left = n, last = null;
     for (const u of L.units) {
-      const k = clamp(left, 0, u.full.length); left -= k;
-      u.typed.data = u.full.slice(0, k); u.rest.textContent = u.full.slice(k);
-      if (k > 0 && k < u.full.length) last = u;
+      const k = clamp(left, 0, u.vis.length); left -= k;
+      u.typed.data = u.vis.slice(0, k); u.rest.textContent = u.vis.slice(k);
+      if (k > 0 && k < u.vis.length) last = u;
     }
     return last;
   };
+  const cmp = (a, b) => a.top - b.top || a.depth - b.depth || (a.type === 'rect' ? -1 : 1) - (b.type === 'rect' ? -1 : 1) || a.left - b.left;
+  const refresh = () => {   // the page is shorter now that the extras are out of the layout: re-measure
+    for (const L of layers) { const r = L.el.getBoundingClientRect(); L.top = r.top + (L.fixed ? 0 : scrollY); L.left = r.left; L.h = r.height; L.w = r.width; }
+    layers.sort(cmp);
+  };
+  refresh();
   const restoreText = (L) => { L.el.classList.remove('sw-t'); for (const u of L.units) { u.w.replaceWith(u.node); } };
 
   // ---------- 3. overlay, HUD, agents ----------
@@ -178,7 +184,7 @@ function swarm() {
   });
 
   let T = 0, last = performance.now(), done = 0, tour = true, speed = 2, over = false, finishing = false;
-  let autoY = 0, lastUser = -99, manualOff = false;   // autoY: where our own scrolling left the page; a different position means the visitor scrolled
+  let autoY = 0, lastUser = -99, manualOff = false, lastRefresh = 0;   // autoY: where our own scrolling left the page; a different position means the visitor scrolled
   const setShape = (a, s) => { if (a.shape !== s) { a.shape = s; a.el.innerHTML = s === 'cross' ? CROSS(a.color) : ARROW(a.color); } };
   const rectNow = (L) => L.el.getBoundingClientRect();
   const finish = (L) => {
@@ -234,7 +240,7 @@ function swarm() {
     for (const a of ag) { a.ph?.remove(); a.sel?.remove(); if (a.L && !a.L.done && a.L.units) { restoreText(a.L); a.L.done = true; } }
     layers.forEach(instant);
     for (const L of layers) if (L.cap && L.units) { restoreText(L); L.el.classList.add('sw-in'); setTimeout(() => L.el.classList.remove('sw-in'), 600); }
-    for (const L of deferred) { L.el.classList.remove('sw-r', 'sw-i', 'sw-sk'); L.el.classList.add('sw-in'); setTimeout(() => L.el.classList.remove('sw-in'), 600); }
+    for (const L of deferred) { L.el.classList.remove('sw-x'); L.el.classList.add('sw-in'); setTimeout(() => L.el.classList.remove('sw-in'), 600); }
     icons.forEach((s) => s.classList.remove('sw-ic'));
     document.body.classList.remove('sw-run'); gridEl?.classList.remove('sw-i');
     document.documentElement.style.scrollBehavior = '';
@@ -267,6 +273,7 @@ function swarm() {
   const frame = (now) => {
     if (over) return;
     const dt = Math.min(.2, (now - last) / 1000) * speed; last = now; T += dt;
+    if (T - lastRefresh > .5) { refresh(); lastRefresh = T; }
     if (T > 2.4) intro.classList.add('gone');
 
     for (const a of ag) {
