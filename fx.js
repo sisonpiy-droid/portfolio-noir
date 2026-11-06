@@ -417,7 +417,7 @@ function intro() {
     const hash = (n) => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };   // deterministic noise, so any frame can be drawn on its own
     const END = 3.1, SKIP_TO = 2.4, SLOW = 1.35;   // SLOW stretches the timeline: about 4.2 seconds of real time
 
-    const font = (size, family = 'Unbounded', weight = 800) => { ctx.font = `${weight} ${size}px "${family}", Impact, sans-serif`; };
+    const font = (size, family = 'Dela Gothic One', weight = 400) => { ctx.font = `${weight} ${size}px "${family}", Impact, sans-serif`; };
     const text = (s, x, y, size, color, o = {}) => {
       ctx.save(); ctx.globalAlpha = o.alpha ?? 1; ctx.translate(x, y); if (o.rot) ctx.rotate(o.rot); ctx.scale(o.sx ?? 1, o.sy ?? 1);
       font(size, o.family, o.weight); ctx.fillStyle = color; ctx.textAlign = o.align || 'left'; ctx.textBaseline = 'alphabetic'; ctx.fillText(s, 0, 0); ctx.restore();
@@ -522,7 +522,7 @@ function intro() {
     const skip = () => { const raw = (performance.now() - t0) / 1000 / SLOW + off; if (raw < SKIP_TO) off += SKIP_TO - raw; };
     addEventListener('keydown', skip); root.addEventListener('click', skip);
     const loop = () => { const t = (performance.now() - t0) / 1000 / SLOW + off; render(Math.min(t, END)); if (t >= END) end(); else raf = requestAnimationFrame(loop); };
-    const fonts = Promise.race([Promise.all([document.fonts.load('800 100px "Unbounded"'), document.fonts.load('600 40px Caveat'), document.fonts.load('500 14px "JetBrains Mono"')]), new Promise((r) => setTimeout(r, 1500))]);
+    const fonts = Promise.race([Promise.all([document.fonts.load('400 100px "Dela Gothic One"'), document.fonts.load('600 40px Caveat'), document.fonts.load('500 14px "JetBrains Mono"')]), new Promise((r) => setTimeout(r, 1500))]);
     fonts.then(() => { t0 = performance.now(); raf = requestAnimationFrame(loop); });
     window.__introRender = render;
   });
