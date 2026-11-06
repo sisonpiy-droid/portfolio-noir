@@ -145,7 +145,7 @@ function swarm() {
 
   // ---------- 3. overlay, HUD, agents ----------
   const root = document.createElement('div'); root.className = 'sw-root';
-  const N = 9;
+  const N = 5;
   root.innerHTML = `<div class="sw-shield"></div><div class="sw-ruler sw-rt"></div><div class="sw-ruler sw-rl"></div><div class="sw-intro">PS</div>
     <div class="sw-hud"><span class="sw-dots">${COLORS.slice(0, 4).map((c) => `<i style="background:${c}"></i>`).join('')}</span>
     <span class="sw-status"><span id="sw-ag"><b>${N}</b> agents</span><span id="sw-ly"><b>0</b> / ${total} layers</span><span class="sw-bar"><i></i></span></span>
@@ -266,7 +266,7 @@ function swarm() {
         else {                                                    // drift around, like saai's scanning phase
           if (T > a.wt) { a.wx = innerWidth * rand(.08, .92); a.wy = innerHeight * rand(.15, .85); a.wt = T + rand(1.2, 2.6); }
           const k = Math.min(1, dt * 1.6); a.x += (a.wx - a.x) * k; a.y += (a.wy - a.y) * k;
-          if (finishing && T > a.nextEdit) { a.nextEdit = T + rand(1.4, 3.6); const e = ambientPick(); if (e) { a.edit = true; beginFly(a, e); } }
+          if (finishing && ag.indexOf(a) < 2 && T > a.nextEdit) { a.nextEdit = T + rand(6, 12); const e = ambientPick(); if (e) { a.edit = true; beginFly(a, e); } }
         }
       } else if (a.st === 'fly') {
         const r = rectNow(L), p = clamp((T - a.t0) / a.dur, 0, 1), e = ease(p);
@@ -357,7 +357,7 @@ function swarm() {
       document.documentElement.style.scrollBehavior = '';
       if (tour) scrollTo({ top: 0, behavior: 'smooth' });
       tour = false;
-      ag.forEach((a) => { a.nextEdit = T + rand(.6, 3); });
+      ag.forEach((a, i) => { a.nextEdit = T + rand(3, 7) + i * 2; });
     }
     requestAnimationFrame(frame);
   };
