@@ -61,9 +61,9 @@ export const museParts = [
 ];
 
 export const hud = [
-  { tag: 'CONSUMER AI', title: 'Muse', desc: 'AI personalities that remember you. 20 starters, live on Vercel.' },
   { tag: 'FUNDRAISING', title: 'VC Pipeline Intelligence', desc: 'Verified investor signals ranked 0–100. 486 tests, 82 of 82 refreshed.' },
   { tag: 'VOICE AI', title: 'Aangan AI Front Desk', desc: 'Answers every call in English and Hindi. The model reads, rules decide.' },
+  { tag: 'OPERATIONS', title: 'Territory Desk', desc: 'Franchise decisions that held across 119 random workbooks.' },
 ];
 export const hudTags = ['Next.js', 'TypeScript', 'Supabase', 'Gemini', 'Postgres', 'Vercel'];
 export const cardTags = {

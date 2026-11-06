@@ -335,16 +335,16 @@ function swarm() {
 // ---- opening: glyph rain, a boot console, a glitching MUSE title, a flash, then the swarm ----
 const BOOT = [
   '> piyush.sys  v2027  [boot]',
-  '> mounting MUSE ....... 20 personalities',
-  '> memory .............. ranked + recalled',
   '> vc-pipeline ........ 486 tests green',
   '> aangan .............. EN + HI online',
+  '> territory-desk ..... 119 workbooks ok',
+  '> kargo ............... blind scoring on',
   '> releasing the swarm_',
 ];
 function intro() {
   return new Promise((resolve) => {
     const root = document.createElement('div'); root.className = 'in-root';
-    root.innerHTML = '<canvas class="in-rain"></canvas><pre class="in-term"></pre><div class="in-title"><span data-t="MUSE">MUSE</span><small>CREATE ANYONE · TALK TO ANYONE</small></div><div class="in-crt"></div><div class="in-flash"></div><div class="in-skip">press any key or click to skip</div>';
+    root.innerHTML = '<canvas class="in-rain"></canvas><pre class="in-term"></pre><div class="in-title"><span data-t="PIYUSH">PIYUSH</span><small>AI ENGINEER · I SHIP END TO END</small></div><div class="in-crt"></div><div class="in-flash"></div><div class="in-skip">press any key or click to skip</div>';
     document.body.append(root);
     const cv = $('.in-rain', root), ctx = cv.getContext('2d'), term = $('.in-term', root);
     let w, h, cols, drops, alive = true, raf, finished = false;

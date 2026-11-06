@@ -41,7 +41,7 @@ $('#app').innerHTML = `
       <div class="hero-script">Hello, I'm</div>
       <h1 class="hero-name">${p.name.toUpperCase()}<span class="accent-red-dot">.</span></h1>
       <div class="hero-role-pill"><span class="pill-dot">●</span><span>${p.role.toUpperCase()}</span></div>
-      <p class="hero-desc">Building <strong>AI products end to end</strong>, led by <strong>Muse</strong>, a companion that remembers you, plus voice agents and investor intelligence, with <strong>rules that keep the model honest</strong>.</p>
+      <p class="hero-desc">Building <strong>AI products end to end</strong>, from voice agents to investor intelligence, with <strong>rules that keep the model honest</strong> and tests that prove it.</p>
       <div class="hero-actions"><a href="#contact" class="btn btn-crimson hero-btn"><span>INITIATE DISPATCH</span>${arrow}</a><a href="#flagships" class="btn btn-glass hero-btn"><span>EXPLORE THE WORK</span></a></div>
       <div class="hero-stats-row">${stats.map((s) => `<div class="hero-stat-box"><span class="stat-val">${s.n}</span><span class="stat-lbl">${s.l}</span></div>`).join('')}</div>
     </div>

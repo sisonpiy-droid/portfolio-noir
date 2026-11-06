@@ -262,7 +262,7 @@ body.sw-run #aurora-canvas{opacity:0}
 .in-root.title .in-term{opacity:.12;filter:blur(2px)}
 .in-title{position:absolute;inset:0;display:grid;place-content:center;text-align:center;opacity:0;pointer-events:none}
 .in-root.title .in-title{opacity:1}
-.in-title span{position:relative;display:inline-block;font:400 clamp(140px,30vw,460px)/.9 'Bebas Neue',Impact,sans-serif;color:#fff;letter-spacing:.02em;animation:inJit .16s steps(2) infinite}
+.in-title span{position:relative;display:inline-block;font:400 clamp(110px,22vw,380px)/.9 'Bebas Neue',Impact,sans-serif;color:#fff;letter-spacing:.02em;animation:inJit .16s steps(2) infinite}
 .in-title span::before,.in-title span::after{content:attr(data-t);position:absolute;left:0;top:0;width:100%;height:100%}
 .in-title span::before{color:#ef4444;transform:translateX(-7px);animation:inSlice1 .9s steps(1) infinite}
 .in-title span::after{color:#22d3ee;transform:translateX(7px);animation:inSlice2 .7s steps(1) infinite}
@@ -291,3 +291,16 @@ body:not(.sw-run) .hero-name{animation:nameGlitch 6.5s infinite}
 body:not(.sw-run) .hero-cutout-img{animation:imgGlitch 8s infinite}
 @keyframes imgGlitch{0%,92%,100%{transform:none;clip-path:none}93%{transform:translateX(8px);clip-path:inset(12% 0 62% 0)}94%{transform:translateX(-10px);clip-path:inset(55% 0 20% 0)}95%{transform:translateX(5px);clip-path:inset(30% 0 40% 0)}96%{transform:none;clip-path:none}}
 @media(prefers-reduced-motion:reduce){.in-root{display:none}}
+
+/* ---- photo animations (live page only) ---- */
+.hero-cutout-wrap{transform:perspective(900px) rotateY(calc(var(--px,0) * 12deg)) rotateX(calc(var(--py,0) * -9deg));transition:transform .25s ease-out;transform-style:preserve-3d}
+.hero-cutout-wrap::after{content:'';position:absolute;left:6%;right:6%;top:18%;height:16%;z-index:3;pointer-events:none;background:linear-gradient(180deg,transparent,rgba(255,255,255,.28) 50%,transparent);mix-blend-mode:overlay;opacity:0}
+body:not(.sw-run) .hero-cutout-wrap::after{animation:photoScan 3.6s linear infinite}
+@keyframes photoScan{0%{top:14%;opacity:0}12%{opacity:1}88%{opacity:1}100%{top:84%;opacity:0}}
+body:not(.sw-run) .hero-portrait-panel{animation:panelBreathe 5s ease-in-out infinite}
+@keyframes panelBreathe{0%,100%{transform:translate(14px,-14px)}50%{transform:translate(24px,-24px)}}
+body:not(.sw-run) .cutout-status-badge{animation:badgeFlicker 5s steps(1) infinite}
+@keyframes badgeFlicker{0%,90%,94%,100%{opacity:1}92%,96%{opacity:.25}}
+body:not(.sw-run) .hero-cutout-img{animation:imgGlitch 8s infinite,imgBreathe 6s ease-in-out infinite}
+@keyframes imgBreathe{0%,100%{filter:grayscale(1) brightness(1.08) contrast(1.06)}50%{filter:grayscale(1) brightness(1.2) contrast(1.14)}}
+@keyframes imgGlitch{0%,92%,100%{transform:none;clip-path:none}93%{transform:translateX(8px);clip-path:inset(12% 0 62% 0);filter:grayscale(1) drop-shadow(-7px 0 rgba(34,211,238,.9)) drop-shadow(7px 0 rgba(239,68,68,.9))}94%{transform:translateX(-10px);clip-path:inset(55% 0 20% 0)}95%{transform:translateX(5px);clip-path:inset(30% 0 40% 0);filter:grayscale(1) drop-shadow(5px 0 rgba(239,68,68,.9))}96%{transform:none;clip-path:none}}
