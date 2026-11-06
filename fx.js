@@ -415,7 +415,7 @@ function intro() {
     const oElastic = (p) => (p <= 0 ? 0 : p >= 1 ? 1 : Math.pow(2, -10 * p) * Math.sin((p * 10 - .75) * (2 * Math.PI) / 3) + 1);
     const inCubic = (p) => p * p * p;
     const hash = (n) => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };   // deterministic noise, so any frame can be drawn on its own
-    const END = 5.2, SKIP_TO = 4.5, SLOW = 1.2;   // SLOW stretches the timeline: about 6 seconds of real time
+    const END = 4.1, SKIP_TO = 3.4, SLOW = 1.1;   // SLOW stretches the timeline: about 4.5 seconds of real time
 
     const font = (size, family = 'Bebas Neue', weight = 400) => { ctx.font = `${weight} ${size}px "${family}", Impact, sans-serif`; };
     const text = (s, x, y, size, color, o = {}) => {
@@ -475,7 +475,7 @@ function intro() {
     };
 
     // ---- scene 2: hard-hitting words (1.0 – 2.6) ----
-    const WORDS = [['BUILD.', 0, .4], ['BREAK.', .4, .8], ['FIX.', .8, 1.2], ['SHIP.', 1.2, 1.6]];
+    const WORDS = [['BUILD.', 0, .4], ['BREAK.', .4, .8], ['SHIP.', .8, 1.2]];
     const scene2 = (t) => {
       for (const [w, a, b] of WORDS) {
         if (t < a || t >= b + .005) continue;
@@ -487,12 +487,6 @@ function intro() {
             const y0 = baseY - size * .8 + (size * .8 * i) / bands, hh = (size * .85) / bands + 1, dx = (hash(i * 3.1) - .5) * W * .45 * (1 - p);
             ctx.save(); ctx.beginPath(); ctx.rect(0, y0, W, hh); ctx.clip(); text(w, x0 + dx, baseY, size, i % 3 === 0 ? RED : INK); ctx.restore();
           }
-        } else if (w === 'FIX.') {   // glitch: split, flicker, zoom pulses
-          const f = Math.floor(lt * 50), on = hash(f) > .18, s = 1 + (lt < .1 ? .12 * (1 - lt / .1) : 0), jx = (hash(f + 3) - .5) * 14 * u * (lt < .26 ? 1 : .2);
-          ctx.save(); ctx.translate(W / 2, baseY - size * .3); ctx.scale(s, s);
-          if (on) { text('FIX.', jx - 9 * u, size * .3, size, RED, { align: 'center', alpha: .85 }); text('FIX.', jx + 9 * u, size * .3, size, '#7dd3fc', { align: 'center', alpha: .5 }); text('FIX.', jx, size * .3, size, INK, { align: 'center' }); }
-          ctx.restore();
-          for (let i = 0; i < 3; i++) { const gy = baseY - size * (.15 + hash(f + i) * .6); ctx.fillStyle = RED; ctx.globalAlpha = .55; ctx.fillRect(0, gy, W, 3 * u); ctx.globalAlpha = 1; }
         } else {
           const p = oBack(seg(lt, 0, .16)), s = 1 + .7 * (1 - c01(p)), jx = lt < .18 ? (hash(Math.floor(lt * 80)) - .5) * 10 * u : 0;
           font(size); const tw = ctx.measureText(w).width, cx = W / 2 + jx, cy = baseY - size * .34;
@@ -504,25 +498,8 @@ function intro() {
             for (const [x, y] of [[bx, by], [bx + bw, by], [bx, by + bh], [bx + bw, by + bh]]) ctx.fillRect(x - 4 * u, y - 4 * u, 8 * u, 8 * u);
             ctx.restore(); text(`x: ${Math.round(W / 2)}   y: ${Math.round(cy)}`, bx, by - 10 * u, 14 * u, INK, { family: 'JetBrains Mono', weight: 500, alpha: .8 });
           }
-          burst(W / 2, cy, lt - .04, 46, RED); burst(W / 2, cy, lt - .04, 22, INK);
         }
       }
-    };
-
-    // ---- scene 3: the easing curve (2.6 – 3.5) ----
-    const scene3 = (t) => {
-      const x0 = W * .18, x1 = W * .82, y0 = H * .78, y1 = H * .22, dx = x1 - x0;
-      polyline([[x0, y1 - 30 * u], [x0, y0], [x1 + 20 * u, y0]], easeOut(seg(t, 0, .22)), INK, 1.6 * u);
-      text('quality', x0 - 14 * u, y1 - 40 * u, 15 * u, GREY, { family: 'JetBrains Mono', weight: 500, alpha: seg(t, .1, .3) });
-      text('time', x1 + 24 * u, y0 + 22 * u, 15 * u, GREY, { family: 'JetBrains Mono', weight: 500, alpha: seg(t, .1, .3), align: 'right' });
-      polyline([[x0, y0], [x1, y1]], easeOut(seg(t, .05, .4)), GREY, 2 * u, [8 * u, 7 * u]);
-      hand('talk is cheap', x0 + dx * .56, y0 - (y0 - y1) * .3 + 70 * u, 40 * u, RED, seg(t, .25, .5), -.05);
-      const bez = (s) => { const m = 1 - s; return [m * m * m * x0 + 3 * m * m * s * (x0 + dx * .5) + 3 * m * s * s * (x1 - dx * .5) + s * s * s * x1, m * m * m * y0 + 3 * m * m * s * y0 + 3 * m * s * s * y1 + s * s * s * y1]; };
-      const pts = []; for (let i = 0; i <= 60; i++) pts.push(bez(i / 60));
-      polyline(pts, ease(seg(t, .3, .75)), RED, 4.5 * u);
-      for (const [x, y] of [[x0, y0], [x1, y1]]) { ctx.fillStyle = INK; ctx.globalAlpha = seg(t, .3, .5); ctx.beginPath(); ctx.arc(x, y, 7 * u, 0, 7); ctx.fill(); ctx.globalAlpha = 1; }
-      hand('tested ✓', x0 + dx * .08, y1 + 60 * u, 46 * u, INK, seg(t, .6, .85), -.04);
-      const q = seg(t, .55, .9); if (q > 0) { const [x, y] = bez(ease(q)); ctx.fillStyle = RED; ctx.beginPath(); ctx.arc(x, y, 12 * u, 0, 7); ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 2 * u; ctx.stroke(); }
     };
 
     // ---- scene 4: the name card (3.5 – 5.2) ----
@@ -550,21 +527,16 @@ function intro() {
       ctx.fillStyle = DARK; ctx.fillRect(0, 0, W, H);
       const gr = ctx.createRadialGradient(W / 2, H / 2, H * .1, W / 2, H / 2, H * 1.1); gr.addColorStop(0, 'rgba(239,68,68,.12)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = gr; ctx.fillRect(0, 0, W, H);
       ctx.strokeStyle = 'rgba(255,255,255,.035)'; ctx.lineWidth = 1; ctx.beginPath(); for (let x = W * .17; x < W; x += W * .33) { ctx.moveTo(x, 0); ctx.lineTo(x, H); } ctx.stroke();
-      // screen shake on the SHIP slam
-      const st = t - 2.2, sh = st > 0 && st < .3 ? (1 - st / .3) * 9 * u : 0;
-      ctx.save(); if (sh) ctx.translate((hash(Math.floor(t * 90)) - .5) * sh * 2, (hash(Math.floor(t * 90) + 7) - .5) * sh * 2);
-      if (t < 1.0) scene1(t); else if (t < 2.6) scene2(t - 1.0); else if (t < 3.5) scene3(t - 2.6); else scene4(t - 3.5);
+      ctx.save();
+      if (t < 1.0) scene1(t); else if (t < 2.2) scene2(t - 1.0); else scene4(t - 2.2);
       ctx.restore();
-      if (st > 0 && st < .08) { ctx.fillStyle = '#fff'; ctx.globalAlpha = (1 - st / .08) * .5; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1; }   // one-frame flash
-      for (const tb of [1.0, 2.6, 3.5]) bar(t, tb);
-      if (t >= 4.45) {   // the red dot swallows the screen, then dark takes over
+      for (const tb of [1.0, 2.2]) bar(t, tb);
+      if (t >= 3.4) {   // the red dot swallows the screen, then dark takes over
         const diag = Math.hypot(W, H) * 1.05;
-        ctx.fillStyle = RED; ctx.beginPath(); ctx.arc(dot.x, dot.y, dot.r + diag * inCubic(seg(t, 4.45, 4.85)), 0, 7); ctx.fill();
-        ctx.fillStyle = DARK; ctx.beginPath(); ctx.arc(dot.x, dot.y, diag * easeOut(seg(t, 4.7, 5.2)), 0, 7); ctx.fill();
+        ctx.fillStyle = RED; ctx.beginPath(); ctx.arc(dot.x, dot.y, dot.r + diag * inCubic(seg(t, 3.4, 3.75)), 0, 7); ctx.fill();
+        ctx.fillStyle = DARK; ctx.beginPath(); ctx.arc(dot.x, dot.y, diag * easeOut(seg(t, 3.6, 4.1)), 0, 7); ctx.fill();
       }
-      if (!grid) { grid = document.createElement('canvas'); grid.width = 4; grid.height = 4; const g = grid.getContext('2d'); g.fillStyle = 'rgba(0,0,0,.09)'; g.fillRect(0, 0, 4, 1); }
-      if (t < 4.5) { ctx.fillStyle = ctx.createPattern(grid, 'repeat'); ctx.fillRect(0, 0, W, H); }   // faint scanlines
-      if (t < 4.45) { ctx.fillStyle = RED; ctx.fillRect(0, H - 3, W * (t / END), 3); text(`00:0${Math.min(6, Math.floor(t * SLOW))} / 00:06`, 18, H - 14, 12 * u, GREY, { family: 'JetBrains Mono', weight: 500 }); }
+      if (t < 3.4) { ctx.fillStyle = RED; ctx.fillRect(0, H - 3, W * (t / END), 3); text(`00:0${Math.min(4, Math.floor(t * SLOW))} / 00:04`, 18, H - 14, 12 * u, GREY, { family: 'JetBrains Mono', weight: 500 }); }
     };
 
     let t0 = performance.now(), off = 0, raf, finished = false;
