@@ -332,8 +332,71 @@ function swarm() {
   requestAnimationFrame(frame);
 }
 
-export function initFx() {
-  aurora();
+// ---- opening: glyph rain, a boot console, a glitching MUSE title, a flash, then the swarm ----
+const BOOT = [
+  '> piyush.sys  v2027  [boot]',
+  '> mounting MUSE ....... 20 personalities',
+  '> memory .............. ranked + recalled',
+  '> vc-pipeline ........ 486 tests green',
+  '> aangan .............. EN + HI online',
+  '> releasing the swarm_',
+];
+function intro() {
+  return new Promise((resolve) => {
+    const root = document.createElement('div'); root.className = 'in-root';
+    root.innerHTML = '<canvas class="in-rain"></canvas><pre class="in-term"></pre><div class="in-title"><span data-t="MUSE">MUSE</span><small>CREATE ANYONE · TALK TO ANYONE</small></div><div class="in-crt"></div><div class="in-flash"></div><div class="in-skip">press any key or click to skip</div>';
+    document.body.append(root);
+    const cv = $('.in-rain', root), ctx = cv.getContext('2d'), term = $('.in-term', root);
+    let w, h, cols, drops, alive = true, raf, finished = false;
+    const size = () => { w = cv.width = innerWidth; h = cv.height = innerHeight; cols = Math.ceil(w / 16); drops = Array.from({ length: cols }, () => rand(-40, 0)); };
+    size();
+    const G = 'アイウエオカキクケコサシスセソ01{}<>/\\#$%';
+    const rain = () => {
+      if (!alive) return;
+      ctx.fillStyle = 'rgba(5,5,5,.16)'; ctx.fillRect(0, 0, w, h); ctx.font = '14px JetBrains Mono, monospace';
+      for (let i = 0; i < cols; i++) {
+        const y = drops[i] * 16;
+        ctx.fillStyle = Math.random() < .04 ? '#fff' : 'rgba(239,68,68,.75)';
+        ctx.fillText(G[(Math.random() * G.length) | 0], i * 16, y);
+        if (y > h && Math.random() > .975) drops[i] = 0;
+        drops[i] += .5 + (i % 5) * .12;
+      }
+      raf = requestAnimationFrame(rain);
+    };
+    rain();
+    const end = () => {
+      if (finished) return; finished = true; alive = false; cancelAnimationFrame(raf);
+      removeEventListener('keydown', end); root.removeEventListener('click', end);
+      root.classList.add('flash');
+      setTimeout(() => { resolve(); root.classList.add('out'); setTimeout(() => root.remove(), 700); }, 240);
+    };
+    addEventListener('keydown', end); root.addEventListener('click', end);
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    (async () => {
+      for (const l of BOOT) {
+        for (const ch of l) { if (finished) return; term.textContent += ch; await sleep(11); }
+        term.textContent += '\n'; await sleep(70);
+      }
+      await sleep(250); if (finished) return;
+      root.classList.add('title'); await sleep(1100); if (finished) return;
+      root.classList.add('shake'); await sleep(450); end();
+    })();
+  });
+}
+
+// ---- hero: a spotlight and a little parallax that follow the mouse (the glitches are CSS) ----
+function heroFx() {
+  const hero = $('#hero'); if (!hero || reduced || matchMedia('(hover:none)').matches) return;
+  addEventListener('mousemove', (e) => {
+    const r = hero.getBoundingClientRect(); if (r.bottom < 0) return;
+    hero.style.setProperty('--mx', e.clientX - r.left + 'px'); hero.style.setProperty('--my', e.clientY - r.top + 'px');
+    hero.style.setProperty('--px', (e.clientX / innerWidth - .5).toFixed(3)); hero.style.setProperty('--py', (e.clientY / innerHeight - .5).toFixed(3));
+  }, { passive: true });
+}
+
+export async function initFx() {
+  aurora(); heroFx();
   if (reduced || mode === 'off' || innerWidth < 700) return;
+  if (new URLSearchParams(location.search).get('intro') !== 'off') await intro();
   swarm();
 }

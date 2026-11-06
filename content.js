@@ -51,10 +51,19 @@ export const scoreParts = [
   { k: 'Relationship', v: 5, t: 'Founder notes stay private', d: 'Existing contact history, which the refresh role can never read or overwrite.', tags: ['DB Role Isolation', 'Tested'] },
 ];
 
+// The hero project: Muse. Its explorer on the first flagship card.
+export const museParts = [
+  { k: 'Personalities', t: 'Twenty starter personalities', d: 'Twenty ready-made personalities to talk to, built around relationship continuity: the point is that they remember you.', tags: ['20 Starters', 'Relationship Continuity'] },
+  { k: 'Memory', t: 'Ranked and recalled', d: 'Memories are ranked and recalled in later conversations, so a personality can pick up where you left off.', tags: ['Ranked Memory', 'Recall Across Chats'] },
+  { k: 'Models', t: 'Gemini or Anthropic', d: 'Both models sit behind one provider interface, so the model behind a personality can change without changing the product.', tags: ['Gemini', 'Anthropic'] },
+  { k: 'Solo mode', t: 'No account needed', d: 'A solo mode with no account keeps everything in the browser, while the model key stays on the server.', tags: ['Browser-Only Data', 'Key Stays Server-Side'] },
+  { k: 'Spec first', t: 'Built from a product spec', d: 'Built in phases: foundation, core experience, conversation and memory. An end-to-end test plays out the spec’s most important scenario against the real model.', tags: ['PRD-Driven', 'End-to-End Test'] },
+];
+
 export const hud = [
+  { tag: 'CONSUMER AI', title: 'Muse', desc: 'AI personalities that remember you. 20 starters, live on Vercel.' },
   { tag: 'FUNDRAISING', title: 'VC Pipeline Intelligence', desc: 'Verified investor signals ranked 0–100. 486 tests, 82 of 82 refreshed.' },
   { tag: 'VOICE AI', title: 'Aangan AI Front Desk', desc: 'Answers every call in English and Hindi. The model reads, rules decide.' },
-  { tag: 'OPERATIONS', title: 'Territory Desk', desc: 'Franchise decisions that held across 119 random workbooks.' },
 ];
 export const hudTags = ['Next.js', 'TypeScript', 'Supabase', 'Gemini', 'Postgres', 'Vercel'];
 export const cardTags = {
@@ -110,10 +119,10 @@ export const flagships = [
   {
     tag: 'CONSUMER AI PRODUCT', title: 'Muse',
     desc: 'Create anyone. Talk to anyone. AI personalities that remember you. Built from a product spec in phases, around relationship continuity.',
-    note: '',
+    note: 'Live on Vercel · about 70 commits',
     bullets: ['20 starter personalities with ranked, recalled memories', 'Gemini or Anthropic behind one provider interface', 'No-account solo mode in the browser; the model key stays on the server'],
     stack: ['Next.js', 'Prisma', 'Postgres', 'Auth', 'Gemini', 'Anthropic'],
-    stats: [['20', 'Personalities'], ['~70', 'Commits'], ['Live', 'On Vercel']],
+    stats: [['20', 'Personalities'], ['2', 'Model Providers'], ['~70', 'Commits'], ['Live', 'On Vercel']],
     links: [['Live app', 'https://muse-two-brown.vercel.app']],
   },
   {

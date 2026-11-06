@@ -1,4 +1,4 @@
-import { profile as p, stats, about, scoreParts, flagships, filters, matrix, hud, hudTags, cardTags } from './content.js';
+import { profile as p, stats, about, museParts, flagships, filters, matrix, hud, hudTags, cardTags } from './content.js';
 import { initFx } from './fx.js';
 
 const $ = (s, r = document) => r.querySelector(s);
@@ -18,7 +18,7 @@ $('#dock').innerHTML = `
     <div class="dock-right"><div class="dock-status"><span class="status-dot"></span><span>Available</span></div><a href="#contact" class="dock-cta">DISPATCH →</a></div>
   </nav>`;
 
-const first = flagships[0], rest = flagships.slice(1);
+const first = flagships.find((f) => f.title === 'Muse'), rest = flagships.filter((f) => f !== first);   // Muse leads
 const links = (l, cls) => l.map(([t, h], i) => `<a class="${cls(i)}" href="${h}" target="_blank" rel="noopener">${t}</a>`).join('');
 const sub = (f) => `
   <article class="glass-card subgrid-card">
@@ -41,7 +41,7 @@ $('#app').innerHTML = `
       <div class="hero-script">Hello, I'm</div>
       <h1 class="hero-name">${p.name.toUpperCase()}<span class="accent-red-dot">.</span></h1>
       <div class="hero-role-pill"><span class="pill-dot">●</span><span>${p.role.toUpperCase()}</span></div>
-      <p class="hero-desc">Building <strong>AI products end to end</strong>, from voice agents to investor intelligence, with <strong>rules that keep the model honest</strong> and tests that prove it.</p>
+      <p class="hero-desc">Building <strong>AI products end to end</strong>, led by <strong>Muse</strong>, a companion that remembers you, plus voice agents and investor intelligence, with <strong>rules that keep the model honest</strong>.</p>
       <div class="hero-actions"><a href="#contact" class="btn btn-crimson hero-btn"><span>INITIATE DISPATCH</span>${arrow}</a><a href="#flagships" class="btn btn-glass hero-btn"><span>EXPLORE THE WORK</span></a></div>
       <div class="hero-stats-row">${stats.map((s) => `<div class="hero-stat-box"><span class="stat-val">${s.n}</span><span class="stat-lbl">${s.l}</span></div>`).join('')}</div>
     </div>
@@ -86,11 +86,11 @@ $('#app').innerHTML = `
       <div class="flagship-body">
         <h3 class="flagship-title">${first.title}</h3>
         <p class="flagship-desc">${first.desc}</p>
-        <div class="flagship-metrics-row">${[...first.stats, ['5', 'Score Factors']].map(([n, l]) => `<div class="metric-pill"><div class="metric-num">${n}</div><div class="metric-desc">${l}</div></div>`).join('')}</div>
+        <div class="flagship-metrics-row">${first.stats.map(([n, l]) => `<div class="metric-pill"><div class="metric-num">${n}</div><div class="metric-desc">${l}</div></div>`).join('')}</div>
         <div class="flagship-links">${links(first.links, (i) => (i ? 'btn btn-glass' : 'btn btn-primary'))}</div>
         <div class="saai-architecture-explorer">
-          <div class="explorer-header"><div class="explorer-title">0–100 EXPLAINABLE SCORE</div><div class="explorer-sub">Click a factor to inspect its weight</div></div>
-          <div class="layer-tabs" role="tablist">${scoreParts.map((s, i) => `<button class="layer-tab ${i ? '' : 'active'}" data-i="${i}" role="tab" aria-selected="${!i}">S${i + 1}: ${s.k} · ${s.v}</button>`).join('')}</div>
+          <div class="explorer-header"><div class="explorer-title">HOW MUSE WORKS</div><div class="explorer-sub">Click a part to inspect it</div></div>
+          <div class="layer-tabs" role="tablist">${museParts.map((s, i) => `<button class="layer-tab ${i ? '' : 'active'}" data-i="${i}" role="tab" aria-selected="${!i}">M${i + 1}: ${s.k}</button>`).join('')}</div>
           <div class="layer-inspector-pane"><div id="layer-content">
             <div class="layer-inspect-badge" id="li-badge"></div><h4 class="layer-inspect-title" id="li-title"></h4><p class="layer-inspect-desc" id="li-desc"></p><div class="tech-tags-group" id="li-tags"></div>
           </div></div>
@@ -132,8 +132,8 @@ $('#app').innerHTML = `
 
 // score explorer: fade-swap like saai's layer inspector
 const showPart = (i) => {
-  const s = scoreParts[i];
-  $('#li-badge').textContent = `SCORE FACTOR ${n2(i)} // ${s.k.toUpperCase()} · ${s.v}/100`;
+  const s = museParts[i];
+  $('#li-badge').textContent = `MUSE // PART ${n2(i)} // ${s.k.toUpperCase()}`;
   $('#li-title').textContent = s.t; $('#li-desc').textContent = s.d; $('#li-tags').innerHTML = tag(s.tags);
 };
 showPart(0);

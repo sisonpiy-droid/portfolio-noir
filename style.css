@@ -253,3 +253,41 @@ body.sw-run #aurora-canvas{opacity:0}
   .section-divider-bar{grid-template-columns:1fr auto}.divider-line{display:none}
 }
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+
+/* ---- opening sequence ---- */
+.in-root{position:fixed;inset:0;z-index:3500;background:#050505;overflow:hidden;transition:opacity .7s ease}
+.in-root.out{opacity:0;pointer-events:none}
+.in-rain{position:absolute;inset:0;width:100%;height:100%;opacity:.55}
+.in-term{position:absolute;left:8vw;top:18vh;margin:0;font:500 clamp(12px,1.5vw,16px)/2 'JetBrains Mono',monospace;color:#e5e5e5;white-space:pre;text-shadow:0 0 8px rgba(239,68,68,.6);transition:opacity .3s,filter .3s}
+.in-root.title .in-term{opacity:.12;filter:blur(2px)}
+.in-title{position:absolute;inset:0;display:grid;place-content:center;text-align:center;opacity:0;pointer-events:none}
+.in-root.title .in-title{opacity:1}
+.in-title span{position:relative;display:inline-block;font:400 clamp(140px,30vw,460px)/.9 'Bebas Neue',Impact,sans-serif;color:#fff;letter-spacing:.02em;animation:inJit .16s steps(2) infinite}
+.in-title span::before,.in-title span::after{content:attr(data-t);position:absolute;left:0;top:0;width:100%;height:100%}
+.in-title span::before{color:#ef4444;transform:translateX(-7px);animation:inSlice1 .9s steps(1) infinite}
+.in-title span::after{color:#22d3ee;transform:translateX(7px);animation:inSlice2 .7s steps(1) infinite}
+.in-title small{font:700 clamp(11px,1.6vw,18px) 'JetBrains Mono',monospace;letter-spacing:.45em;color:#ef4444;margin-top:2vh}
+@keyframes inJit{0%{transform:translate(0,0)}50%{transform:translate(2px,-2px)}100%{transform:translate(-2px,1px)}}
+@keyframes inSlice1{0%{clip-path:inset(0 0 70% 0)}20%{clip-path:inset(40% 0 30% 0)}40%{clip-path:inset(10% 0 80% 0)}60%{clip-path:inset(60% 0 5% 0)}80%{clip-path:inset(25% 0 55% 0)}100%{clip-path:inset(0 0 70% 0)}}
+@keyframes inSlice2{0%{clip-path:inset(65% 0 0 0)}25%{clip-path:inset(20% 0 60% 0)}50%{clip-path:inset(75% 0 10% 0)}75%{clip-path:inset(35% 0 40% 0)}100%{clip-path:inset(65% 0 0 0)}}
+.in-crt{position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(0,0,0,.28) 0 1px,transparent 1px 3px),radial-gradient(ellipse at center,transparent 55%,rgba(0,0,0,.7));animation:inFlicker .12s steps(2) infinite}
+@keyframes inFlicker{50%{opacity:.88}}
+.in-flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}
+.in-root.flash .in-flash{animation:inFlash .24s ease-out forwards}
+@keyframes inFlash{to{opacity:1}}
+.in-root.shake .in-title,.in-root.shake .in-term{animation:inShake .09s linear infinite}
+.in-root.shake .in-rain{filter:hue-rotate(-30deg) contrast(1.4)}
+@keyframes inShake{0%{transform:translate(0,0)}25%{transform:translate(-8px,4px)}50%{transform:translate(7px,-5px)}75%{transform:translate(-5px,-3px)}100%{transform:translate(4px,5px)}}
+.in-skip{position:absolute;left:0;right:0;bottom:3vh;text-align:center;font:500 11px 'JetBrains Mono',monospace;letter-spacing:.2em;color:#666;text-transform:uppercase}
+
+/* ---- hero: spotlight, parallax, glitches (live page only) ---- */
+.hero-section::after{content:'';position:absolute;inset:0;z-index:1;pointer-events:none;background:radial-gradient(460px circle at var(--mx,50%) var(--my,35%),rgba(239,68,68,.13),transparent 62%)}
+body.sw-run .hero-section::after{opacity:0}
+.hero-center-col{transform:translate(calc(var(--px,0) * 18px),calc(var(--py,0) * 12px));transition:transform .25s ease-out}
+.hero-wordmark-svg{transform:translate(calc(var(--px,0) * -26px),calc(var(--py,0) * -14px));transition:transform .3s ease-out}
+.hud-stack{transform:translate(calc(var(--px,0) * -10px),calc(var(--py,0) * -6px));transition:transform .3s ease-out}
+body:not(.sw-run) .hero-name{animation:nameGlitch 6.5s infinite}
+@keyframes nameGlitch{0%,91%,100%{transform:none;text-shadow:none}92%{transform:translate(-4px,1px) skewX(-8deg);text-shadow:4px 0 #22d3ee,-4px 0 #000}94%{transform:translate(4px,-1px) skewX(6deg);text-shadow:-4px 0 #22d3ee,4px 0 #000}96%{transform:translate(-2px,0);text-shadow:2px 0 #22d3ee}98%{transform:none;text-shadow:none}}
+body:not(.sw-run) .hero-cutout-img{animation:imgGlitch 8s infinite}
+@keyframes imgGlitch{0%,92%,100%{transform:none;clip-path:none}93%{transform:translateX(8px);clip-path:inset(12% 0 62% 0)}94%{transform:translateX(-10px);clip-path:inset(55% 0 20% 0)}95%{transform:translateX(5px);clip-path:inset(30% 0 40% 0)}96%{transform:none;clip-path:none}}
+@media(prefers-reduced-motion:reduce){.in-root{display:none}}
