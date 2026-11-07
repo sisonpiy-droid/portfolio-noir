@@ -353,3 +353,24 @@ body:not(.sw-run) .hero-cutout-wrap:hover .hero-cutout-img{animation:imgGlitch .
 .band-row{width:max-content;white-space:nowrap;font:400 clamp(70px,12vw,170px)/1 'Bebas Neue',Impact,sans-serif;will-change:transform}
 .band-row.out{color:transparent;-webkit-text-stroke:1.5px rgba(239,68,68,.6)}
 .band-row.fill{color:rgba(255,255,255,.07)}
+
+/* ---- the reel: a film strip that winds down the page ---- */
+.reel{position:relative;max-width:980px;margin:0 auto}
+.reel-svg{display:block;width:100%;height:auto;filter:drop-shadow(0 0 22px rgba(239,68,68,.22))}
+.reel-body{fill:none;stroke:#0b0b0c;stroke-width:68;stroke-linecap:round}
+.reel-edge{fill:none;stroke:rgba(255,255,255,.55);stroke-width:82;stroke-dasharray:5 15}
+.reel-frame{position:absolute;margin:0;width:clamp(150px,25vw,270px);background:#0f0f10;border:1px solid rgba(255,255,255,.16);border-radius:8px;padding:8px;box-shadow:0 22px 50px rgba(0,0,0,.65);z-index:2}
+.rf-img{aspect-ratio:16/10;background-size:cover;background-position:top center;border-radius:4px;background-color:#1b1b1d}
+.rf-muse{display:grid;place-items:center;background:linear-gradient(135deg,#312e81,#6d28d9 60%,#ef4444);font:400 clamp(26px,4vw,44px) 'Bebas Neue',Impact,sans-serif;color:#fff;letter-spacing:.04em}
+.reel-frame figcaption{padding:8px 4px 2px;display:flex;flex-direction:column;gap:2px}
+.reel-frame b{font-size:14px;color:#fff;letter-spacing:-.01em}
+.reel-frame span{font:500 11px var(--font-mono);color:var(--text-muted)}
+/* ---- the recorder bar ---- */
+#player{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:90;display:flex;align-items:center;gap:12px;background:rgba(10,10,10,.88);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.14);border-radius:10px;padding:9px 14px;font:600 11px var(--font-mono);letter-spacing:.08em;color:#cfcfcf;pointer-events:none;white-space:nowrap;box-shadow:0 10px 30px rgba(0,0,0,.5)}
+.pl-dot{width:8px;height:8px;border-radius:50%;background:#555;transition:background .2s}
+#player.rec .pl-dot{background:var(--accent-red);box-shadow:0 0 10px var(--accent-red)}
+.pl-state{width:42px;color:#fff}
+.pl-chap{color:var(--text-muted);min-width:150px}
+.pl-bar{width:120px;height:3px;background:#2c2c2c;border-radius:2px;overflow:hidden}
+.pl-bar i{display:block;height:100%;width:0;background:var(--accent-red)}
+@media(max-width:700px){#player{left:12px;right:12px;transform:none;justify-content:space-between;gap:8px}.pl-chap{min-width:0}.pl-bar{width:50px}}

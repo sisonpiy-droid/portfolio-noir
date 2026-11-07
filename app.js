@@ -12,7 +12,7 @@ $('#dock').innerHTML = `
   <nav class="nav-dock" aria-label="Main Navigation">
     <a href="#hero" class="nav-brand" aria-label="Home"><span class="brand-monogram">PS</span><span class="brand-label">PIYUSH<span style="color:var(--accent-red)">.</span></span></a>
     <div class="nav-links">
-      <a href="#about" class="nav-item">About</a><a href="#flagships" class="nav-item">Flagships</a><a href="#projects" class="nav-item">Matrix</a><a href="#contact" class="nav-item">Contact</a>
+      <a href="#about" class="nav-item">About</a><a href="#reel" class="nav-item">Reel</a><a href="#flagships" class="nav-item">Flagships</a><a href="#projects" class="nav-item">Matrix</a><a href="#contact" class="nav-item">Contact</a>
       <a href="${p.room}" target="_blank" rel="noopener" class="nav-item">3D Room ↗</a>
     </div>
     <div class="dock-right"><div class="dock-status"><span class="status-dot"></span><span>Available</span></div><a href="#contact" class="dock-cta">DISPATCH →</a></div>
@@ -76,6 +76,22 @@ $('#app').innerHTML = `
     <div><div class="col-title">EDUCATION</div>${about.education.map((e) => `<div class="edu-line"><b>${e.w}</b>${e.d}</div>`).join('')}
       <div class="col-title" style="margin-top:24px">COURSES</div><div class="tech-tags-group">${tag(about.courses)}</div></div>
   </div></div>
+</section>
+
+<section id="reel" class="section reel-section">
+  <div class="section-header"><div class="section-tag">THE REEL</div><h2 class="section-title">The Story So Far</h2>
+    <p class="section-desc">Five things I shipped, rolled out as one tape. Keep scrolling to play it.</p></div>
+  <div class="reel">
+    <svg class="reel-svg" viewBox="0 0 1000 1950" aria-hidden="true">
+      <defs><mask id="reelMask" maskUnits="userSpaceOnUse" x="-200" y="-200" width="1400" height="2350"><path id="reelDraw" d="M500 0 C500 120 820 140 820 330 S180 520 180 710 S820 900 820 1090 S180 1280 180 1470 S500 1700 500 1900" fill="none" stroke="#fff" stroke-width="150" stroke-linecap="round"/></mask></defs>
+      <g mask="url(#reelMask)"><path class="reel-edge" d="M500 0 C500 120 820 140 820 330 S180 520 180 710 S820 900 820 1090 S180 1280 180 1470 S500 1700 500 1900"/><path class="reel-body" d="M500 0 C500 120 820 140 820 330 S180 520 180 710 S820 900 820 1090 S180 1280 180 1470 S500 1700 500 1900"/></g>
+    </svg>
+      <figure class="reel-frame" data-t="0.1"><div class="rf-img" style="background-image:url(img/vc-pipeline.webp)"></div><figcaption><b>VC Pipeline</b><span>486 tests · 82/82 refreshed</span></figcaption></figure>
+      <figure class="reel-frame" data-t="0.3"><div class="rf-img" style="background-image:url(img/aangan-architecture.webp)"></div><figcaption><b>Aangan Front Desk</b><span>Voice agent · English + Hindi</span></figcaption></figure>
+      <figure class="reel-frame" data-t="0.5"><div class="rf-img" style="background-image:url(img/territory-desk.webp)"></div><figcaption><b>Territory Desk</b><span>119 workbooks, hard rules held</span></figcaption></figure>
+      <figure class="reel-frame" data-t="0.7"><div class="rf-img" style="background-image:url(img/kargo-hiring.webp)"></div><figcaption><b>Kargo Hiring</b><span>Blind CV scoring</span></figcaption></figure>
+      <figure class="reel-frame" data-t="0.9"><div class="rf-img rf-muse"><span>Muse</span></div><figcaption><b>Muse</b><span>20 personalities that remember you</span></figcaption></figure>
+      </div>
 </section>
 
 <div class="band" aria-hidden="true"><div class="band-row out">NO DEMOS · NO FLUFF · REAL PRODUCTS · NO DEMOS · NO FLUFF · REAL PRODUCTS · NO DEMOS · NO FLUFF · REAL PRODUCTS · NO DEMOS · NO FLUFF · REAL PRODUCTS · NO DEMOS · NO FLUFF · REAL PRODUCTS · NO DEMOS · NO FLUFF · REAL PRODUCTS · </div></div>

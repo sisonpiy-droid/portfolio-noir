@@ -107,7 +107,7 @@ function swarm() {
   }
   layers.sort((a, b) => a.top - b.top || a.depth - b.depth || (a.type === 'rect' ? -1 : 1) - (b.type === 'rect' ? -1 : 1) || a.left - b.left);
   // Only the subjects are built while the swarm runs: boxes, titles and one line on what each thing is. The rest waits for the end.
-  const DEFER = '.marquee,.band,.hero-actions,.hero-stats-row,.hud-tech-tags,.flagship-meta,.flagship-metrics-row,.flagship-links,.saai-architecture-explorer,.spec-list,.subgrid-footer,.bento-footer,.bento-controls,.bento-link,.exp-sub,.exp-note,.edu-line,.about-text + .about-text,.quote-box,.principle-desc,.email-action-box,.social-links-row,.footer-meta,.about-grid .tech-tags-group';
+  const DEFER = '.marquee,.band,.reel-section,.hero-actions,.hero-stats-row,.hud-tech-tags,.flagship-meta,.flagship-metrics-row,.flagship-links,.saai-architecture-explorer,.spec-list,.subgrid-footer,.bento-footer,.bento-controls,.bento-link,.exp-sub,.exp-note,.edu-line,.about-text + .about-text,.quote-box,.principle-desc,.email-action-box,.social-links-row,.footer-meta,.about-grid .tech-tags-group';
   const deferred = [];
   for (let i = layers.length - 1; i >= 0; i--) if (layers[i].el.closest(DEFER)) deferred.push(layers.splice(i, 1)[0]);
   const total = layers.length;
@@ -147,6 +147,7 @@ function swarm() {
     }
   }
   for (const L of deferred) L.el.classList.add('sw-x');   // gone until the swarm ends, so the boxes carry no empty space
+  const extraSections = $$('.reel-section'); extraSections.forEach((e) => e.classList.add('sw-x'));   // the reel's strip is a graphic, not a layer, so hide the whole section
   const setTyped = (L, n) => {
     let left = n, last = null;
     for (const u of L.units) {
@@ -266,6 +267,7 @@ function swarm() {
     if (revealed) return; revealed = true;
     for (const L of layers) if (L.cap && L.units) { restoreText(L); L.el.classList.add('sw-in'); setTimeout(() => L.el.classList.remove('sw-in'), 600); }
     for (const L of deferred) { L.el.classList.remove('sw-x'); L.el.classList.add('sw-in'); setTimeout(() => L.el.classList.remove('sw-in'), 600); }
+    extraSections.forEach((e) => { e.classList.remove('sw-x'); e.classList.add('sw-in'); setTimeout(() => e.classList.remove('sw-in'), 600); });
     icons.forEach((s) => s.classList.remove('sw-ic'));
     document.body.classList.remove('sw-run'); gridEl?.classList.remove('sw-i');
   };
@@ -681,6 +683,21 @@ function gsapScroll() {
     ScrollTrigger.addEventListener('scrollEnd', () => skew(0));
   }
 
+  // 4b. the reel: a film strip winds down the page as you scroll and the project frames land on it
+  const reel = $('.reel');
+  if (reel) {
+    const svg = $('.reel-svg', reel), body = $('.reel-body', reel), draw = $('#reelDraw', reel), vb = svg.viewBox.baseVal, L = draw.getTotalLength();
+    gsap.set(draw, { strokeDasharray: L, strokeDashoffset: L });
+    gsap.to(draw, { strokeDashoffset: 0, ease: 'none', scrollTrigger: { trigger: reel, start: 'top 72%', end: 'bottom 45%', scrub: .6 } });
+    $$('.reel-frame', reel).forEach((fr, i) => {
+      const t = +fr.dataset.t, p = body.getPointAtLength(L * t), q = body.getPointAtLength(Math.min(L, L * t + 6));
+      const tilt = clamp(Math.atan2(q.y - p.y, q.x - p.x) * 180 / Math.PI - 90, -10, 10) + (i % 2 ? 3 : -3);
+      fr.style.left = (p.x / vb.width * 100) + '%'; fr.style.top = (p.y / vb.height * 100) + '%';
+      gsap.set(fr, { xPercent: -50, yPercent: -50, rotation: tilt });
+      gsap.from(fr, { scale: .3, opacity: 0, rotation: tilt - 25, duration: .8, ease: 'back.out(1.7)', scrollTrigger: { trigger: fr, start: 'top 80%', toggleActions: 'play none none reverse' } });
+    });
+  }
+
   // 5. giant outlined text bands slide sideways as you pass them (one each way)
   $$('.band').forEach((band, i) => {
     const row = $('.band-row', band);
@@ -702,12 +719,24 @@ function liveFx() {
   const onScroll = () => {
     if (ticking) return; ticking = true;
     requestAnimationFrame(() => {
-      ticking = false; bar.style.transform = `scaleX(${clamp(scrollY / ((document.documentElement.scrollHeight - innerHeight) || 1), 0, 1)})`;
+      ticking = false; const prog = clamp(scrollY / ((document.documentElement.scrollHeight - innerHeight) || 1), 0, 1); bar.style.transform = `scaleX(${prog})`; updatePlayer(prog);
       if (hero && scrollY < innerHeight * 1.5) hero.style.setProperty('--sy', scrollY.toFixed(0));
     });
   };
   addEventListener('scroll', onScroll, { passive: true }); onScroll();
   $$('.hero-stat-box .stat-val').forEach(countUp);
+  // a tape-recorder bar: the page is the tape, scrolling is playing it
+  const pl = document.createElement('div'); pl.id = 'player';
+  pl.innerHTML = '<span class="pl-dot"></span><span class="pl-state">PAUSE</span><span class="pl-chap">SIDE A · INTRO</span><span class="pl-bar"><i></i></span><span class="pl-time">00:00 / 03:00</span>';
+  document.body.append(pl);
+  const CH = [['hero', 'INTRO'], ['about', 'ABOUT'], ['reel', 'THE REEL'], ['flagships', 'FLAGSHIPS'], ['projects', 'MATRIX'], ['contact', 'CONTACT']];
+  let plTimer;
+  const updatePlayer = (p) => {
+    const sec = Math.round(p * 180), mm = String(Math.floor(sec / 60)).padStart(2, '0'), ss = String(sec % 60).padStart(2, '0');
+    let ch = CH[0][1]; for (const [id, name] of CH) { const el = document.getElementById(id); if (el && el.getBoundingClientRect().top <= innerHeight * .4) ch = name; }
+    $('.pl-time', pl).textContent = `${mm}:${ss} / 03:00`; $('.pl-chap', pl).textContent = `SIDE ${p < .5 ? 'A' : 'B'} · ${ch}`; $('.pl-bar i', pl).style.width = (p * 100).toFixed(1) + '%';
+    $('.pl-state', pl).textContent = 'REC'; pl.classList.add('rec'); clearTimeout(plTimer); plTimer = setTimeout(() => { $('.pl-state', pl).textContent = 'PAUSE'; pl.classList.remove('rec'); }, 350);
+  };
   if (!matchMedia('(hover:none)').matches) {
     addEventListener('mousemove', (e) => {
       const c = e.target.closest?.('.glass-card');
